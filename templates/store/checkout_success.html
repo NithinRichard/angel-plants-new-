@@ -1,0 +1,479 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}{% trans "Order Confirmation - Thank You!" %}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Critical CSS inlined for faster rendering */
+    .success-animation {
+        opacity: 0;
+        transform: translateY(20px);
+        animation: fadeInUp 0.5s ease-out forwards;
+    }
+    @keyframes fadeInUp {
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .order-details-card {
+        border-left: 4px solid #28a745;
+    }
+    @media (hover: hover) {
+        .order-details-card:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
+        }
+        .social-share-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1);
+        }
+    }
+    .lazyload {
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+    .lazyloaded {
+        opacity: 1;
+    }
+</style>
+<!-- Load non-critical CSS asynchronously -->
+<link rel="preload" href="{% static 'css/checkout-success.css' %}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet" href="{% static 'css/checkout-success.css' %}"></noscript>
+{% endblock %}
+
+{% block content %}
+<div class="container py-3 py-md-5">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-10">
+            <div class="card border-0 shadow-sm success-animation">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-check-circle me-2"></i>
+                        {% trans "Order Confirmed!" %}
+                    </h4>
+                </div>
+                <div class="card-body p-3 p-md-4">
+                    <div class="text-center py-3 py-md-4">
+                        <div class="mb-3">
+                            <i class="fas fa-check-circle text-success" style="font-size: 4rem;"></i>
+                        </div>
+                        <h2 class="h3 mb-3 fw-bold">{% trans "Thank you for your order!" %}</h2>
+                        <p class="lead text-muted mb-0">
+                            {% trans "Your order has been received and is being processed." %}
+                            {% if order.user.email %}
+                            <span class="d-block d-md-inline">
+                                {% trans "A confirmation email has been sent to" %} <strong>{{ order.user.email }}</strong>.
+                            </span>
+                            {% endif %}
+                        </p>
+                        {% if order.payment_method == 'razorpay' and order.payment %}
+                        <div class="alert alert-info mt-3 text-start">
+                            <h5 class="alert-heading">
+                                <i class="fas fa-receipt me-2"></i>{% trans "Payment Receipt" %}
+                            </h5>
+                            <hr>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>{% trans "Transaction ID" %}:</strong></p>
+                                    <p class="mb-1"><strong>{% trans "Payment Method" %}:</strong></p>
+                                    <p class="mb-1"><strong>{% trans "Amount Paid" %}:</strong></p>
+                                    <p class="mb-1"><strong>{% trans "Status" %}:</strong></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1">{{ order.payment.transaction_id|default:order.razorpay_order_id }}</p>
+                                    <p class="mb-1">{{ order.get_payment_method_display }}</p>
+                                    <p class="mb-1">₹{{ order.total_amount|floatformat:2 }}</p>
+                                    <p class="mb-0">
+                                        <span class="badge bg-success">{% trans "Paid" %}</span>
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="order-summary border rounded p-4 mb-4 order-details-card">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5 class="mb-4 d-flex align-items-center">
+                                    <i class="fas fa-box-open me-2 text-success"></i>
+                                    {% trans "Order Summary" %}
+                                </h5>
+                                <div class="order-info">
+                                    <p class="mb-2">
+                                        <strong><i class="fas fa-hashtag text-muted me-2"></i>{% trans "Order Number" %}:</strong>
+                                        <span class="text-muted">{{ order.order_number }}</span>
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong><i class="far fa-calendar-alt text-muted me-2"></i>{% trans "Order Date" %}:</strong>
+                                        <span class="text-muted">{{ order.created_at|date:"F j, Y" }}</span>
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong><i class="fas fa-credit-card text-muted me-2"></i>{% trans "Payment Method" %}:</strong>
+                                        <span class="text-muted">{{ order.get_payment_method_display }}</span>
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong><i class="fas fa-truck text-muted me-2"></i>{% trans "Shipping" %}:</strong>
+                                        <span class="text-muted">{% if order.shipping_fee > 0 %}₹{{ order.shipping_fee|floatformat:2 }}{% else %}{% trans "Free Shipping" %}{% endif %}</span>
+                                    </p>
+                                    <p class="mb-2">
+                                        <strong><i class="fas fa-map-marker-alt text-muted me-2"></i>{% trans "Shipping to" %}:</strong>
+                                        <span class="text-muted">
+                                            {{ order.shipping_address.get_full_address|linebreaksbr }}
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5 class="mb-3">{% trans "Order Total" %}</h5>
+                                <div class="order-totals">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">{% trans "Subtotal" %}:</span>
+                                        <span>₹{{ order.total_amount|floatformat:2 }}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">{% trans "Shipping" %}:</span>
+                                        <span>{% if order.shipping_fee > 0 %}₹{{ order.shipping_fee|floatformat:2 }}{% else %}{% trans "Free" %}{% endif %}</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <span class="text-muted">{% trans "Tax (18% GST)" %}:</span>
+                                        <span>₹{{ order.tax_amount|default:0|floatformat:2 }}</span>
+                                    </div>
+                                    {% if order.discount_amount > 0 %}
+                                    <div class="d-flex justify-content-between mb-2 text-success">
+                                        <span>{% trans "Discount" %}:</span>
+                                        <span>-₹{{ order.discount_amount|floatformat:2 }}</span>
+                                    </div>
+                                    {% endif %}
+                                    <div class="d-flex justify-content-between mt-3 pt-3 border-top">
+                                        <strong>{% trans "Total Amount" %}:</strong>
+                                        <strong class="text-success">
+                                            ₹{{ order.get_total_with_tax_and_shipping|floatformat:2 }}
+                                        </strong>
+                                    </div>
+                                </div>
+                                
+                                <!-- Order Status Progress -->
+                                <div class="mt-4">
+                                    <h6 class="mb-3">{% trans "Order Status" %}</h6>
+                                    <div class="progress" style="height: 8px;">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: 25%;" 
+                                             aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <div class="d-flex justify-content-between mt-2 small text-muted">
+                                        <span>{% trans "Ordered" %}</span>
+                                        <span>{% trans "Shipped" %}</span>
+                                        <span>{% trans "In Transit" %}</span>
+                                        <span>{% trans "Delivered" %}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                        <!-- Order Items - Lazy loaded -->
+                        <div class="card mb-3 mb-md-4" id="order-items-container">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0"><i class="fas fa-shopping-bag me-2"></i>{% trans "Ordered Items" %}</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>{% trans "Product" %}</th>
+                                                <th class="text-center">{% trans "Price" %}</th>
+                                                <th class="text-center">{% trans "Qty" %}</th>
+                                                <th class="text-end">{% trans "Total" %}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in order.items.all|slice:":5" %}
+                                            <tr>
+                                                <td class="align-middle">
+                                                    <div class="d-flex align-items-center">
+                                                        {% if item.product.image %}
+                                                        <img 
+                                                            src="{% static 'img/placeholder.svg' %}" 
+                                                            data-src="{{ item.product.image.url }}" 
+                                                            alt="{{ item.product.name }}" 
+                                                            class="img-fluid rounded me-2 me-md-3 lazyload" 
+                                                            style="width: 50px; height: 50px; object-fit: cover;"
+                                                            loading="lazy"
+                                                            width="50"
+                                                            height="50"
+                                                        >
+                                                        {% endif %}
+                                                        <div class="flex-grow-1">
+                                                            <h6 class="mb-0 h6">{{ item.product.name|truncatechars:30 }}</h6>
+                                                            <p class="text-muted mb-0 small d-none d-md-block">{{ item.product.category.name }}</p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="text-center align-middle">₹{{ item.price|floatformat:2 }}</td>
+                                                <td class="text-center align-middle">{{ item.quantity }}</td>
+                                                <td class="text-end align-middle fw-medium">₹{{ item.get_total|floatformat:2 }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                            {% if order.items.count > 5 %}
+                                            <tr>
+                                                <td colspan="4" class="text-center py-3">
+                                                    <button class="btn btn-sm btn-outline-secondary" id="load-more-items">
+                                                        {% trans "Show all" %} {{ order.items.count|add:"-5" }} {% trans "more items" %}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Social Sharing -->
+                        <div class="card mb-4">
+                            <div class="card-body text-center">
+                                <h5 class="mb-3">{% trans "Share your purchase" %}</h5>
+                                <p class="text-muted mb-4">
+                                    {% trans "Loved your purchase? Share it with your friends!" %}
+                                </p>
+                                <div class="d-flex justify-content-center gap-3">
+                                    <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri|urlencode }}" 
+                                       target="_blank" class="btn btn-outline-primary social-share-btn" style="min-width: 100px;">
+                                        <i class="fab fa-facebook-f me-2"></i> Facebook
+                                    </a>
+                                    <a href="https://twitter.com/intent/tweet?url={{ request.build_absolute_uri|urlencode }}&text=I%20just%20bought%20from%20Angel%20Plants!%20%23AngelPlants" 
+                                       target="_blank" class="btn btn-outline-info social-share-btn" style="min-width: 100px;">
+                                        <i class="fab fa-twitter me-2"></i> Twitter
+                                    </a>
+                                    <a href="https://wa.me/?text=Check%20out%20what%20I%20bought%20from%20Angel%20Plants!%20{{ request.build_absolute_uri|urlencode }}" 
+                                       target="_blank" class="btn btn-outline-success social-share-btn" style="min-width: 100px;">
+                                        <i class="fab fa-whatsapp me-2"></i> WhatsApp
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Call to Action Buttons -->
+                        <div class="d-flex flex-column flex-md-row justify-content-between gap-3 mt-4">
+                            <a href="{% url 'store:home' %}" class="btn btn-primary px-4 py-2 flex-grow-1">
+                                <i class="fas fa-home me-2"></i> {% trans "Continue Shopping" %}
+                            </a>
+                            <a href="{% url 'store:order_detail' order.order_number %}" class="btn btn-outline-primary px-4 py-2 flex-grow-1">
+                                <i class="fas fa-eye me-2"></i> {% trans "View Order Details" %}
+                            </a>
+                            <a href="{% url 'store:invoice' order.id %}" class="btn btn-outline-secondary px-4 py-2 flex-grow-1" target="_blank">
+                                <i class="fas fa-file-invoice me-2"></i> {% trans "Download Invoice" %}
+                            </a>
+                        </div>
+                    {% else %}
+                        <h1 class="mb-4">{% trans "Order Not Found" %}</h1>
+                        <p class="lead">{% trans "We couldn't find the order you're looking for." %}</p>
+                        <div class="mt-4">
+                            <a href="{% url 'store:home' %}" class="btn btn-primary">
+                                {% trans "Return to Home" %}
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Store order data in JSON for deferred processing -->
+<script id="order-data" type="application/json">
+{
+    "order_number": "{% if order %}{{ order.order_number|escapejs }}{% endif %}",
+    "total_amount": "{% if order %}{{ order.total_amount|add:order.shipping_fee|floatformat:2 }}{% else %}0{% endif %}",
+    "shipping_fee": "{{ order.shipping_fee|default:0 }}",
+    "items": [
+        {% for item in order.items.all %}
+        {
+            "id": "{{ item.product.id }}",
+            "name": "{{ item.product.name|escapejs }}",
+            "price": "{{ item.price|floatformat:2 }}",
+            "quantity": {{ item.quantity }},
+            "category": "{{ item.product.category.name|escapejs }}"
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ]
+}
+</script>
+
+<!-- Defer non-critical JavaScript -->
+<script>
+// Self-executing function to avoid polluting global scope
+(function() {
+    'use strict';
+    
+    // Check if IntersectionObserver is available for lazy loading
+    const hasIntersectionObserver = 'IntersectionObserver' in window;
+    
+    // Function to initialize after DOM is loaded
+    function initSuccessPage() {
+        // Get order data from JSON element
+        const orderDataEl = document.getElementById('order-data');
+        if (!orderDataEl) return;
+        
+        const orderData = JSON.parse(orderDataEl.textContent);
+        if (!orderData.order_number) return;
+        
+        // Track order completion with analytics (non-blocking)
+        if (typeof gtag !== 'undefined') {
+            requestIdleCallback(() => {
+                // Google Analytics 4 (GA4) purchase event
+                gtag('event', 'purchase', {
+                    transaction_id: orderData.order_number,
+                    value: parseFloat(orderData.total_amount || '0'),
+                    currency: 'INR',
+                    tax: 0,
+                    shipping: parseFloat(orderData.shipping_fee || '0'),
+                    items: orderData.items.map(item => ({
+                        item_id: item.id,
+                        item_name: item.name,
+                        price: parseFloat(item.price || '0'),
+                        item_category: item.category,
+                        quantity: parseInt(item.quantity || '1')
+                    }))
+                });
+                console.log('GA4: Purchase event tracked', orderData.order_number);
+            });
+        }
+        
+        // Clear cart from localStorage (non-blocking)
+        if (typeof Storage !== 'undefined') {
+            requestIdleCallback(() => {
+                localStorage.removeItem('cart');
+                console.log('Cart cleared from localStorage');
+            });
+        }
+        
+        // Initialize lazy loading for images
+        if (hasIntersectionObserver) {
+            initLazyLoading();
+        } else {
+            // Fallback for browsers without IntersectionObserver
+            document.querySelectorAll('img[data-src]').forEach(img => {
+                img.src = img.dataset.src;
+                img.classList.add('lazyloaded');
+            });
+        }
+        
+        // Initialize order status animation with requestAnimationFrame
+        initOrderStatusAnimation();
+        
+        // Add click handlers for social sharing buttons (delegated)
+        document.body.addEventListener('click', handleSocialShareClick);
+        
+        // Handle load more items button
+        const loadMoreBtn = document.getElementById('load-more-items');
+        if (loadMoreBtn) {
+            loadMoreBtn.addEventListener('click', loadMoreItems);
+        }
+    }
+    
+    // Lazy load images with IntersectionObserver
+    function initLazyLoading() {
+        const lazyImages = document.querySelectorAll('img[data-src]');
+        if (!lazyImages.length) return;
+        
+        const imageObserver = new IntersectionObserver((entries, observer) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    const img = entry.target;
+                    img.src = img.dataset.src;
+                    img.classList.add('lazyloaded');
+                    observer.unobserve(img);
+                }
+            });
+        }, {
+            rootMargin: '200px',
+            threshold: 0.01
+        });
+        
+        lazyImages.forEach(img => imageObserver.observe(img));
+    }
+    
+    // Animate order status progress
+    function initOrderStatusAnimation() {
+        const progressBar = document.querySelector('.progress-bar');
+        if (!progressBar) return;
+        
+        // Only animate if the tab is visible
+        if (document.visibilityState === 'visible') {
+            const animateProgress = () => {
+                progressBar.style.transition = 'width 1.5s ease-in-out';
+                progressBar.style.width = '25%';
+                
+                // Simulate order progress (for demo purposes)
+                const statuses = [
+                    { width: '50%', text: 'Processing' },
+                    { width: '75%', text: 'Shipped' },
+                    { width: '100%', text: 'Delivered' }
+                ];
+                
+                statuses.forEach((status, index) => {
+                    setTimeout(() => {
+                        if (document.visibilityState === 'visible') {
+                            progressBar.style.width = status.width;
+                            progressBar.setAttribute('aria-valuenow', status.width);
+                            
+                            // Update status text if needed
+                            const statusText = document.querySelector(`.progress-text-${index + 1}`);
+                            if (statusText) {
+                                statusText.classList.add('text-success', 'fw-bold');
+                            }
+                        }
+                    }, (index + 1) * 1500);
+                });
+            };
+            
+            // Start animation after a short delay to allow initial render
+            setTimeout(animateProgress, 300);
+        }
+    }
+    
+    // Handle social share button clicks
+    function handleSocialShareClick(e) {
+        const btn = e.target.closest('.social-share-btn');
+        if (!btn) return;
+        
+        const platform = btn.querySelector('i')?.className.match(/fa-(\w+)/)?.[1];
+        const orderNumber = document.getElementById('order-data')?.dataset?.orderNumber;
+        
+        if (platform && orderNumber && typeof gtag !== 'undefined') {
+            gtag('event', 'share', {
+                method: platform,
+                content_type: 'order',
+                item_id: orderNumber
+            });
+        }
+    }
+    
+    // Handle loading more items
+    function loadMoreItems() {
+        const container = document.getElementById('order-items-container');
+        const loadMoreBtn = document.getElementById('load-more-items');
+        if (!container || !loadMoreBtn) return;
+        
+        // Show all items by removing the load more button
+        loadMoreBtn.closest('tr')?.remove();
+        
+        // Get all hidden rows and show them
+        const hiddenRows = container.querySelectorAll('tr[data-hidden]');
+        hiddenRows.forEach(row => row.removeAttribute('data-hidden'));
+    }
+    
+    // Initialize when DOM is loaded
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSuccessPage);
+    } else {
+        // DOM already loaded, initialize immediately
+        initSuccessPage();
+    }
+})();
+</script>
+{% endblock %}

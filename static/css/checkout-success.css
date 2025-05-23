@@ -1,0 +1,98 @@
+/* Checkout Success Page Styles */
+
+/* Order summary card */
+.order-summary-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-left: 4px solid #28a745;
+}
+
+/* Order status progress */
+.order-progress {
+    height: 8px;
+    overflow: hidden;
+}
+
+/* Order items table */
+.order-items-table {
+    width: 100%;
+}
+
+.order-items-table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.8rem;
+    letter-spacing: 0.5px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+    .order-details-card {
+        margin-bottom: 1.5rem;
+    }
+    
+    .order-items-table th, 
+    .order-items-table td {
+        padding: 0.75rem 0.5rem;
+    }
+    
+    .order-items-table .product-info {
+        min-width: 200px;
+    }
+}
+
+/* Animation for success icon */
+@keyframes checkmark {
+    0% {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    50% {
+        transform: scale(1.1);
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.success-icon {
+    animation: checkmark 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55) both;
+}
+
+/* Print styles */
+@media print {
+    .no-print, .no-print * {
+        display: none !important;
+    }
+    
+    body {
+        padding: 0;
+        margin: 0;
+        font-size: 12px;
+    }
+    
+    .container {
+        max-width: 100%;
+        padding: 0;
+    }
+    
+    .card {
+        border: none;
+        box-shadow: none;
+    }
+    
+    .card-header {
+        background: none !important;
+        color: #000 !important;
+        padding: 0.5rem 0;
+        border-bottom: 2px solid #000;
+    }
+    
+    .card-body {
+        padding: 0.5rem 0;
+    }
+    
+    .btn {
+        display: none;
+    }
+}

@@ -1,0 +1,548 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ product.name }} - Angel's Plant Shop{% endblock %}
+
+{% block content %}
+<!-- Quantity Display -->
+<div class="container mt-3">
+    <div class="alert alert-info">
+        <h4>Product Availability</h4>
+        <p><strong>Name:</strong> {{ product.name }}</p>
+        <p><strong>Price:</strong> ₹{{ product.price|floatformat:2 }}</p>
+        <p><strong>In Stock:</strong> 
+            <span class="badge {% if product.in_stock %}bg-success{% else %}bg-warning{% endif %}">
+                {% if product.in_stock %}Yes{% else %}No{% endif %}
+            </span>
+        </p>
+        <p><strong>Quantity Available:</strong> 
+            <span class="h5">{{ product.quantity }}</span> items
+        </p>
+    </div>
+</div>
+
+<div class="container py-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'store:product_list' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'store:product_list_by_category' category_slug=product.category.slug %}">{{ product.category.name }}</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ product.name }}</li>
+        </ol>
+    </nav>
+    
+    <div class="row">
+        <!-- Product Images -->
+        <div class="col-md-6">
+            <div class="mb-4">
+                <img src="{{ product.image.url }}" alt="{{ product.name }}" class="img-fluid product-detail-img">
+            </div>
+            <div class="row g-2">
+                <!-- You can add more product images here -->
+                <div class="col-3">
+                    <img src="{{ product.image.url }}" alt="{{ product.name }}" class="img-fluid border rounded" style="cursor: pointer;">
+                </div>
+                <div class="col-3">
+                    <img src="{{ product.image.url }}" alt="{{ product.name }}" class="img-fluid border rounded" style="cursor: pointer;">
+                </div>
+                <div class="col-3">
+                    <img src="{{ product.image.url }}" alt="{{ product.name }}" class="img-fluid border rounded" style="cursor: pointer;">
+                </div>
+                <div class="col-3">
+                    <img src="{{ product.image.url }}" alt="{{ product.name }}" class="img-fluid border rounded" style="cursor: pointer;">
+                </div>
+            </div>
+        </div>
+        
+        <!-- Product Info -->
+        <div class="col-md-6">
+            <h1 class="mb-3">{{ product.name }}</h1>
+            
+            <div class="mb-3">
+                <span class="h5 text-success">₹{{ product.price|floatformat:2 }}</span>
+                <div style="background-color: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; border: 1px solid #dee2e6;">
+                    <strong>Availability:</strong>
+                    <span class="badge {% if product.in_stock %}bg-success{% else %}bg-secondary{% endif %}" style="margin: 0 10px;">
+                        {% if product.in_stock %}In Stock{% else %}Out of Stock{% endif %}
+                    </span>
+                    <span style="color: #6c757d; font-weight: 500;">
+                        {{ product.quantity }} items available
+                    </span>
+                </div>
+            </div>
+            
+            <div class="mb-4">
+                <p>{{ product.description|linebreaks }}</p>
+            </div>
+            
+            <div class="d-flex flex-wrap gap-2 mb-4">
+                {% if product.in_stock %}
+                    <form id="add-to-cart-form" action="{% url 'store:add_to_cart' product.id %}" method="post" class="me-2">
+                        {% csrf_token %}
+                        <div class="input-group mb-2" style="width: 150px;">
+                            <button class="btn btn-outline-secondary px-3" type="button" onclick="decrementQuantity()">-</button>
+                            <input type="number" id="quantity" name="quantity" class="form-control text-center border-left-0 border-right-0" value="1" min="1" max="{{ product.quantity }}" onchange="validateQuantity(this)" style="appearance: textfield; -moz-appearance: textfield;">
+                            <button class="btn btn-outline-secondary px-3" type="button" onclick="incrementQuantity()">+</button>
+                        </div>
+                        <style>
+                            /* Hide number input arrows */
+                            input[type=number]::-webkit-inner-spin-button,
+                            input[type=number]::-webkit-outer-spin-button {
+                                -webkit-appearance: none;
+                                -moz-appearance: textfield;
+                                appearance: none;
+                                margin: 0;
+                            }
+                            /* Ensure consistent width for the input */
+                            #quantity {
+                                max-width: 50px;
+                                text-align: center;
+                            }
+                        </style>
+                        <button type="submit" class="btn btn-primary" id="add-to-cart-btn">
+                            <i class="fas fa-shopping-cart me-2"></i>Add to Cart
+                        </button>
+                    </form>
+                    
+                    <div id="add-to-cart-message" class="mt-2" style="display: none;">
+                        <div class="alert alert-success">
+                            <i class="fas fa-check-circle me-2"></i> <span id="message-text"></span>
+                            <a href="{% url 'store:cart' %}" class="btn btn-sm btn-outline-success ms-2">View Cart</a>
+                        </div>
+                    </div>
+                {% else %}
+                    <button class="btn btn-secondary" disabled>Out of Stock</button>
+                {% endif %}
+                
+                {% if user.is_authenticated %}
+                    {% if product in user.wishlist_items.all %}
+                        <form action="{% url 'store:remove_from_wishlist' product.id %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger" title="Remove from Wishlist">
+                                <i class="fas fa-heart"></i>
+                            </button>
+                        </form>
+                    {% else %}
+                        <form action="{% url 'store:add_to_wishlist' product.id %}" method="post" class="d-inline">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-secondary" title="Add to Wishlist">
+                                <i class="far fa-heart"></i>
+                            </button>
+                        </form>
+                    {% endif %}
+                {% else %}
+                    <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn btn-outline-secondary" title="Login to add to wishlist">
+                        <i class="far fa-heart"></i>
+                    </a>
+                {% endif %}
+            </div>
+            
+            <div class="d-flex gap-2 mt-2">
+                <a href="#" class="btn btn-outline-secondary">
+                    <i class="fas fa-share-alt me-2"></i>Share
+                </a>
+                <button class="btn btn-outline-secondary">
+                    <i class="fas fa-share-alt me-2"></i>Share
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Product Tabs -->
+    <div class="row mt-5">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="productTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="description-tab" data-bs-toggle="tab" data-bs-target="#description" type="button" role="tab">
+                        Description
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="reviews-tab" data-bs-toggle="tab" data-bs-target="#reviews" type="button" role="tab">
+                        Reviews (24)
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="shipping-tab" data-bs-toggle="tab" data-bs-target="#shipping" type="button" role="tab">
+                        Shipping & Returns
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content p-4 border border-top-0 rounded-bottom" id="productTabsContent">
+                <div class="tab-pane fade show active" id="description" role="tabpanel">
+                    <h4>Product Description</h4>
+                    <p>{{ product.description }}</p>
+                    <p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.</p>
+                    <ul>
+                        <li>High-quality plant</li>
+                        <li>Easy to care for</li>
+                        <li>Perfect for home or office</li>
+                        <li>Comes in a decorative pot</li>
+                    </ul>
+                </div>
+                
+                <div class="tab-pane fade" id="reviews" role="tabpanel">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h4>Customer Reviews</h4>
+                            <div class="d-flex align-items-center mb-3">
+                                <div class="text-warning me-2">
+                                    {% for i in "12345"|make_list %}
+                                        {% if forloop.counter <= 4 %}
+                                            <i class="fas fa-star"></i>
+                                        {% else %}
+                                            <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                </div>
+                                <span>4.0 out of 5</span>
+                            </div>
+                            <p>24 global ratings</p>
+                            
+                            <div class="mb-2">
+                                <div class="d-flex align-items-center">
+                                    <span class="me-2" style="width: 50px;">5 star</span>
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: 70%;" aria-valuenow="70" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="ms-2">70%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <div class="d-flex align-items-center">
+                                    <span class="me-2" style="width: 50px;">4 star</span>
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar bg-success" role="progressbar" style="width: 20%;" aria-valuenow="20" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="ms-2">20%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <div class="d-flex align-items-center">
+                                    <span class="me-2" style="width: 50px;">3 star</span>
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar bg-warning" role="progressbar" style="width: 5%;" aria-valuenow="5" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="ms-2">5%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-2">
+                                <div class="d-flex align-items-center">
+                                    <span class="me-2" style="width: 50px;">2 star</span>
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar bg-warning" role="progressbar" style="width: 3%;" aria-valuenow="3" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="ms-2">3%</span>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <div class="d-flex align-items-center">
+                                    <span class="me-2" style="width: 50px;">1 star</span>
+                                    <div class="progress flex-grow-1" style="height: 8px;">
+                                        <div class="progress-bar bg-danger" role="progressbar" style="width: 2%;" aria-valuenow="2" aria-valuemin="0" aria-valuemax="100"></div>
+                                    </div>
+                                    <span class="ms-2">2%</span>
+                                </div>
+                            </div>
+                            
+                            <button class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#writeReviewModal">
+                                Write a Review
+                            </button>
+                        </div>
+                        
+                        <div class="col-md-8">
+                            <div class="border-bottom pb-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="mb-0">John D.</h5>
+                                    <small class="text-muted">2 days ago</small>
+                                </div>
+                                <div class="text-warning mb-2">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="far fa-star"></i>
+                                </div>
+                                <h6>Beautiful Plant!</h6>
+                                <p>This plant arrived in perfect condition and looks even better in person. It's thriving in my living room!</p>
+                            </div>
+                            
+                            <div class="border-bottom pb-3 mb-3">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <h5 class="mb-0">Sarah M.</h5>
+                                    <small class="text-muted">1 week ago</small>
+                                </div>
+                                <div class="text-warning mb-2">
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                    <i class="fas fa-star"></i>
+                                </div>
+                                <h6>Perfect addition to my home office</h6>
+                                <p>I love how this plant looks on my desk. It was well-packaged and arrived quickly.</p>
+                            </div>
+                            
+                            <button class="btn btn-link p-0">See more reviews</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="tab-pane fade" id="shipping" role="tabpanel">
+                    <h4>Shipping Information</h4>
+                    <p>We offer fast and reliable shipping options to get your plants to you as quickly as possible.</p>
+                    
+                    <h5 class="mt-4">Shipping Options</h5>
+                    <ul>
+                        <li><strong>Standard Shipping:</strong> 3-5 business days - $5.99</li>
+                        <li><strong>Express Shipping:</strong> 2-3 business days - $12.99</li>
+                        <li><strong>Overnight Shipping:</strong> 1 business day - $24.99</li>
+                    </ul>
+                    
+                    <h5 class="mt-4">Returns & Exchanges</h5>
+                    <p>We want you to be completely satisfied with your purchase. If you're not happy with your plant, you can return it within 30 days for a full refund or exchange.</p>
+                    <p>Please contact our customer service team to initiate a return or exchange.</p>
+                    
+                    <h5 class="mt-4">Plant Care</h5>
+                    <p>To ensure your plant stays healthy, please follow these care instructions:</p>
+                    <ul>
+                        <li>Water: Keep soil evenly moist but not waterlogged</li>
+                        <li>Light: Bright, indirect sunlight</li>
+                        <li>Temperature: 65-75°F (18-24°C)</li>
+                        <li>Humidity: Prefers higher humidity</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Related Products -->
+    {% if related_products %}
+        <div class="related-products mt-5">
+            <h3 class="mb-4">You May Also Like</h3>
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+                {% for product in related_products %}
+                    <div class="col">
+                        <div class="card h-100">
+                            <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                            <div class="card-body">
+                                <h5 class="card-title">{{ product.name }}</h5>
+                                <p class="card-text text-muted">${{ product.price }}</p>
+                            </div>
+                            <div class="card-footer bg-transparent">
+                                <a href="{% url 'store:product_detail' slug=product.slug %}" class="btn btn-outline-success w-100">View Details</a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Write Review Modal -->
+<div class="modal fade" id="writeReviewModal" tabindex="-1" aria-labelledby="writeReviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="writeReviewModalLabel">Write a Review</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="mb-3">
+                        <label for="reviewRating" class="form-label">Rating</label>
+                        <select class="form-select" id="reviewRating" required>
+                            <option value="">Select rating</option>
+                            <option value="5">5 stars</option>
+                            <option value="4">4 stars</option>
+                            <option value="3">3 stars</option>
+                            <option value="2">2 stars</option>
+                            <option value="1">1 star</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reviewTitle" class="form-label">Review Title</label>
+                        <input type="text" class="form-control" id="reviewTitle" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reviewText" class="form-label">Your Review</label>
+                        <textarea class="form-control" id="reviewText" rows="4" required></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reviewerName" class="form-label">Your Name</label>
+                        <input type="text" class="form-control" id="reviewerName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="reviewerEmail" class="form-label">Email Address</label>
+                        <input type="email" class="form-control" id="reviewerEmail" required>
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="saveInfo" checked>
+                        <label class="form-check-label" for="saveInfo">
+                            Save my name and email for future reviews
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100">Submit Review</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Handle image gallery thumbnails
+    document.addEventListener('DOMContentLoaded', function() {
+        const thumbnails = document.querySelectorAll('.img-thumbnail');
+        const mainImage = document.querySelector('.product-detail-img');
+        
+        thumbnails.forEach(thumbnail => {
+            thumbnail.addEventListener('click', function() {
+                mainImage.src = this.src;
+                
+                // Update active state
+                document.querySelector('.img-thumbnail.active').classList.remove('active', 'border-success');
+                this.classList.add('active', 'border-success');
+            });
+        });
+        
+        // Initialize quantity input
+        const quantityInput = document.getElementById('quantity');
+        if (quantityInput) {
+            quantityInput.addEventListener('change', function() {
+                const max = parseInt(this.max);
+                const min = parseInt(this.min);
+                let value = parseInt(this.value);
+                
+                if (value > max) {
+                    this.value = max;
+                } else if (value < min) {
+                    this.value = min;
+                }
+            });
+        }
+    });
+</script>
+
+<script>
+    // JavaScript for quantity buttons
+    function validateQuantity(input) {
+        const value = parseInt(input.value);
+        const max = parseInt(input.max);
+        const min = parseInt(input.min);
+        
+        if (isNaN(value) || value < min) {
+            input.value = min;
+        } else if (value > max) {
+            input.value = max;
+        }
+        return parseInt(input.value);
+    }
+    
+    function incrementQuantity() {
+        const quantityInput = document.getElementById('quantity');
+        const max = parseInt(quantityInput.max);
+        const current = parseInt(quantityInput.value);
+        if (current < max) {
+            quantityInput.value = current + 1;
+            validateQuantity(quantityInput);
+        }
+    }
+    
+    function decrementQuantity() {
+        const quantityInput = document.getElementById('quantity');
+        const min = parseInt(quantityInput.min);
+        const current = parseInt(quantityInput.value);
+        if (current > min) {
+            quantityInput.value = current - 1;
+            validateQuantity(quantityInput);
+        }
+    }
+    
+    // Handle form submission with AJAX
+    document.getElementById('add-to-cart-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const form = this;
+        const submitBtn = document.getElementById('add-to-cart-btn');
+        const messageDiv = document.getElementById('add-to-cart-message');
+        const messageText = document.getElementById('message-text');
+        
+        // Disable the submit button to prevent multiple submissions
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Adding...';
+        
+        // Get form data
+        const formData = new FormData(form);
+        const quantity = document.getElementById('quantity').value;
+        formData.set('quantity', quantity);
+        
+        // Send AJAX request
+        fetch(form.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Show success message
+                messageText.textContent = data.message || 'Item added to cart';
+                messageDiv.className = 'mt-2';
+                messageDiv.style.display = 'block';
+                
+                // Update cart count in the navbar if the element exists
+                const cartCount = document.getElementById('cart-count');
+                if (cartCount) {
+                    cartCount.textContent = data.item_count || 0;
+                }
+                
+                // Reset form after a delay
+                setTimeout(() => {
+                    form.reset();
+                    document.getElementById('quantity').value = 1;
+                }, 1000);
+            } else {
+                // Show error message
+                messageText.textContent = data.message || 'Error adding item to cart';
+                messageDiv.className = 'mt-2 alert alert-danger';
+                messageDiv.style.display = 'block';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            messageText.textContent = 'An error occurred. Please try again.';
+            messageDiv.className = 'mt-2 alert alert-danger';
+            messageDiv.style.display = 'block';
+        })
+        .finally(() => {
+            // Re-enable the submit button
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-shopping-cart me-2"></i>Add to Cart';
+            
+            // Hide message after 5 seconds
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        });
+    });
+    
+    // Initialize tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

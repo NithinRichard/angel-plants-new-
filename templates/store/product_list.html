@@ -1,0 +1,208 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Shop Plants - Angel's Plant Shop{% endblock %}
+
+{% block content %}
+<style>
+    .product-card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        border: 1px solid rgba(0,0,0,0.125);
+    }
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    .product-card .btn-light {
+        background-color: rgba(255, 255, 255, 0.8);
+        border: none;
+        transition: all 0.2s ease;
+    }
+    .product-card .btn-light:hover {
+        background-color: #fff;
+        color: #dc3545;
+    }
+    .product-card .btn-outline-success:hover i {
+        color: #fff;
+    }
+</style>
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-5 fw-bold">Our Plants</h1>
+            <p class="lead">Find the perfect plants for your home or garden</p>
+            <hr>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Sidebar with Categories -->
+        <div class="col-md-3">
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Categories</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'store:product_list' %}" class="list-group-item list-group-item-action {% if not category_slug %}active{% endif %}">
+                        All Plants
+                    </a>
+                    {% for cat in categories %}
+                        <a href="{% url 'store:product_list_by_category' category_slug=cat.slug %}" 
+                           class="list-group-item list-group-item-action {% if category_slug == cat.slug %}active{% endif %}">
+                            {{ cat.name }}
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">Special Offers</h5>
+                </div>
+                <div class="card-body">
+                    <p>Sign up for our newsletter and get 10% off your first order!</p>
+                    <form>
+                        <div class="mb-3">
+                            <input type="email" class="form-control" placeholder="Your email">
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Subscribe</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Product Grid -->
+        <div class="col-md-9">
+            {% if category_slug %}
+                <h2 class="mb-4">{{ category.name }}</h2>
+            {% endif %}
+            
+            <!-- Debug Info -->
+            <div class="alert alert-info mb-4">
+                <h5>Debug Info:</h5>
+                <p>Categories: {{ categories|length }}</p>
+                <p>Products: {{ products|length }}</p>
+                {% if products %}
+                    <p>First product: {{ products.0.name }} (ID: {{ products.0.id }})</p>
+                {% endif %}
+            </div>
+            
+            <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                {% for product in products %}
+                    <div class="col">
+                        <div class="card h-100 product-card">
+                            <div class="position-relative">
+                                {% if product.image %}
+                                    <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                                {% else %}
+                                    <img src="{% static 'products/placeholder.jpg' %}" class="card-img-top" alt="No image available">
+                                {% endif %}
+                                {% if user.is_authenticated %}
+                                <div class="position-absolute top-0 end-0 p-2">
+                                    <form action="{% url 'store:add_to_wishlist' product.id %}" method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn btn-sm btn-light rounded-circle shadow-sm" title="Add to Wishlist">
+                                            <i class="far fa-heart"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                {% endif %}
+                                {% if product.discount_price %}
+                                <div class="position-absolute top-0 start-0 bg-danger text-white px-2 py-1 small">
+                                    Sale
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <h5 class="card-title">{{ product.name }}</h5>
+                                <p class="card-text text-muted small flex-grow-1">{{ product.description|truncatewords:15 }}</p>
+                                <div class="d-flex justify-content-between align-items-center mt-2">
+                                    <div>
+                                        {% if product.discount_price %}
+                                            <span class="text-danger fw-bold">₹{{ product.discount_price|floatformat:2 }}</span>
+                                            <small class="text-muted text-decoration-line-through ms-1">₹{{ product.price|floatformat:2 }}</small>
+                                        {% else %}
+                                            <span class="fw-bold">₹{{ product.price|floatformat:2 }}</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if product.quantity > 0 %}
+                                        <span class="badge bg-success">In Stock</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Out of Stock</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="card-footer bg-transparent border-top-0 pt-0">
+                                <div class="d-grid gap-2">
+                                    <a href="{% url 'store:product_detail' slug=product.slug %}" class="btn btn-outline-success">
+                                        <i class="fas fa-eye me-1"></i> View Details
+                                    </a>
+                                    {% if product.quantity > 0 %}
+                                        <form action="{% url 'store:add_to_cart' product_id=product.id %}" method="post" class="mt-2">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn btn-success w-100">
+                                                <i class="fas fa-cart-plus me-1"></i> Add to Cart
+                                            </button>
+                                        </form>
+                                    {% else %}
+                                        <button class="btn btn-outline-secondary w-100" disabled>
+                                            <i class="fas fa-times-circle me-1"></i> Out of Stock
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="col-12">
+                        <div class="alert alert-info">No products found.</div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Pagination -->
+            {% if is_paginated %}
+                <nav aria-label="Page navigation" class="mt-4">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&laquo;</span>
+                            </li>
+                        {% endif %}
+                        
+                        {% for i in paginator.page_range %}
+                            {% if page_obj.number == i %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ i }}</span>
+                                </li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ i }}">{{ i }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                        {% else %}
+                            <li class="page-item disabled">
+                                <span class="page-link">&raquo;</span>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

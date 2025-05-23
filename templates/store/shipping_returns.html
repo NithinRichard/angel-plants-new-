@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="text-center mb-5">
+                <h1 class="mb-3">Shipping & Returns</h1>
+                <p class="text-muted">Last updated: {{ last_updated }}</p>
+            </div>
+            
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4 p-lg-5">
+                    <div class="shipping-returns-content">
+                        {% for section in sections %}
+                            <div class="mb-5">
+                                <h2 class="h4 mb-4">{{ section.title }}</h2>
+                                {% if section.content %}
+                                    <p class="text-muted">{{ section.content|linebreaksbr }}</p>
+                                {% endif %}
+                                
+                                {% if section.subsections %}
+                                    <div class="ms-4 mt-4">
+                                        {% for subsection in section.subsections %}
+                                            <div class="mb-4">
+                                                <h3 class="h5 mb-3">{{ subsection.title }}</h3>
+                                                <p class="text-muted">{{ subsection.content|linebreaksbr }}</p>
+                                            </div>
+                                            {% if not forloop.last %}<hr class="my-4">{% endif %}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% if not forloop.last %}<hr class="my-4">{% endif %}
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="alert alert-light mt-5" role="alert">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-truck me-3 fa-2x text-primary"></i>
+                            <div>
+                                <h4 class="h5 mb-2">Need Help with Your Order?</h4>
+                                <p class="mb-0">
+                                    Our customer service team is here to help with any questions about shipping or returns.
+                                    <a href="{% url 'contact' %}" class="text-decoration-none ms-2">
+                                        Contact Us <i class="fas fa-arrow-right ms-1"></i>
+                                    </a>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <p class="text-muted mb-0">
+                    &copy; {{ current_year }} Angel's Plant Shop. All rights reserved.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .shipping-returns-content {
+        line-height: 1.8;
+        color: #4a4a4a;
+    }
+    
+    .shipping-returns-content h2 {
+        color: #2c3e50;
+        font-weight: 600;
+        margin-top: 2.5rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .shipping-returns-content h3 {
+        color: #2c3e50;
+        font-weight: 500;
+        margin-top: 1.5rem;
+    }
+    
+    .shipping-returns-content p {
+        margin-bottom: 1.2rem;
+        color: #6c757d;
+    }
+    
+    .shipping-returns-content ul {
+        padding-left: 1.5rem;
+        margin-bottom: 1.2rem;
+    }
+    
+    .shipping-returns-content li {
+        margin-bottom: 0.5rem;
+        color: #6c757d;
+    }
+    
+    .card {
+        border-radius: 0.75rem;
+    }
+    
+    hr {
+        opacity: 0.1;
+    }
+    
+    .alert {
+        border-radius: 0.5rem;
+        border-left: 4px solid var(--bs-primary);
+    }
+    
+    @media (max-width: 768px) {
+        .shipping-returns-content {
+            font-size: 0.95rem;
+        }
+        
+        .shipping-returns-content h2 {
+            font-size: 1.4rem;
+        }
+        
+        .shipping-returns-content h3 {
+            font-size: 1.2rem;
+        }
+    }
+</style>
+{% endblock %}

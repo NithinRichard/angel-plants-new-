@@ -1,0 +1,528 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Checkout - Angel's Plant Shop{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'store:product_list' %}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'store:cart' %}">Cart</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Checkout</li>
+        </ol>
+    </nav>
+    
+    <h1 class="mb-4">Checkout</h1>
+    
+    {% if order and order.items.count > 0 %}
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Billing & Shipping Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" id="checkoutForm" action="{% url 'store:checkout' %}">
+                            {% csrf_token %}
+                            
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <h6>Contact Information</h6>
+                                    <div class="mb-3">
+                                        <label for="email" class="form-label">Email address</label>
+                                        <input type="email" class="form-control" name="email" id="email" value="{{ user.email }}" required>
+                                        <div class="form-text">We'll send order confirmation to this email</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <h6>Shipping Address</h6>
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="first_name" class="form-label">First name</label>
+                                            <input type="text" class="form-control" name="first_name" id="first_name" value="{{ user.first_name }}" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="last_name" class="form-label">Last name</label>
+                                            <input type="text" class="form-control" name="last_name" id="last_name" value="{{ user.last_name }}" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="address" class="form-label">Address</label>
+                                            <input type="text" class="form-control" name="address" id="address" placeholder="1234 Main St" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="address2" class="form-label">Address 2 <span class="text-muted">(Optional)</span></label>
+                                            <input type="text" class="form-control" name="address2" id="address2" placeholder="Apartment or suite">
+                                        </div>
+                                        <div class="col-md-5">
+                                            <label for="country" class="form-label">Country</label>
+                                            <select class="form-select" id="country" name="country" required>
+                                                <option value="">Choose...</option>
+                                                <option value="United States">United States</option>
+                                                <option value="Canada">Canada</option>
+                                                <option value="United Kingdom">United Kingdom</option>
+                                                <option value="Australia">Australia</option>
+                                                <option value="India" selected>India</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="state" class="form-label">State</label>
+                                            <input type="text" class="form-control" name="state" id="state" required>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="postal_code" class="form-label">Pincode</label>
+                                            <input type="text" class="form-control" name="postal_code" id="postal_code" required>
+                                        </div>
+                                        <div class="col-12">
+                                            <label for="phone" class="form-label">Phone</label>
+                                            <input type="tel" class="form-control" name="phone" id="phone" required>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="my-4">
+                            
+                            <h5 class="mb-3">Payment</h5>
+                            
+                            <div class="row gy-3">
+                                <div class="col-md-12">
+                                    <!-- Payment Options -->
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input id="cash_on_delivery" name="payment_method" type="radio" class="form-check-input" value="cash_on_delivery" checked>
+                                            <label class="form-check-label fw-bold" for="cash_on_delivery">
+                                                <i class="fas fa-truck me-2"></i>Cash on Delivery
+                                            </label>
+                                        </div>
+                                        <div class="form-check">
+                                            <input id="razorpay" name="payment_method" type="radio" class="form-check-input" value="razorpay">
+                                            <label class="form-check-label fw-bold" for="razorpay">
+                                                <i class="fas fa-credit-card me-2"></i>Pay with Razorpay
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- Credit/Debit Card Details (initially hidden) -->
+                                    <div id="credit-card-details" class="mt-3 p-3 border rounded d-none">
+                                        <div class="row">
+                                            <div class="col-md-12 mb-3">
+                                                <label for="cc-name" class="form-label">Name on card</label>
+                                                <input type="text" class="form-control" id="cc-name" placeholder="" required>
+                                                    <small class="text-muted">Full name as displayed on card</small>
+                                                </div>
+                                                
+                                                <div class="col-md-12 mb-3">
+                                                    <label for="cc-number" class="form-label">Card number</label>
+                                                    <input type="text" class="form-control" id="cc-number" placeholder="" required>
+                                                </div>
+                                                
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="cc-expiration" class="form-label">Expiration (MM/YY)</label>
+                                                    <input type="text" class="form-control" id="cc-expiration" placeholder="MM/YY" required>
+                                                </div>
+                                                
+                                                <div class="col-md-6 mb-3">
+                                                    <label for="cc-cvv" class="form-label">CVV</label>
+                                                    <input type="text" class="form-control" id="cc-cvv" placeholder="" required>
+                                                </div>
+                                                
+                                                <div class="col-12">
+                                                    <div class="form-check">
+                                                        <input type="checkbox" class="form-check-input" id="save-info" checked>
+                                                        <label class="form-check-label" for="save-info">Save this information for next time</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Razorpay Payment Option -->
+                                    {% include 'payment/razorpay_payment.html' %}
+
+                                    <!-- Other Payment Options -->
+                                    <div class="form-check mt-3">
+                                        <input id="cod" name="paymentMethod" type="radio" class="form-check-input" value="cod">
+                                        <label class="form-check-label" for="cod">
+                                            <i class="fas fa-money-bill-wave me-2"></i>Cash on Delivery
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <hr class="my-4">
+                            
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-success btn-lg" type="submit" id="submit-order-btn">
+                                    <span id="submit-btn-text">Place Order</span>
+                                    <span id="submit-btn-spinner" class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                </button>
+                                <div id="form-errors" class="alert alert-danger mt-2 d-none"></div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-lg-4">
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal ({{ order.items.count }} items)</span>
+                            <span>₹{{ order.total_amount|floatformat:2 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Shipping</span>
+                            <span>₹99.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Tax</span>
+                            <span>₹{{ order.get_tax|floatformat:2 }}</span>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between mb-3">
+                            <strong>Total</strong>
+                            <strong>₹{{ order.get_total_with_shipping|floatformat:2 }}</strong>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Order Items</h5>
+                    </div>
+                    <div class="card-body p-0
+                    ">
+                        {% for item in order.items.all %}
+                            <div class="d-flex align-items-center p-3 border-bottom">
+                                <div class="flex-shrink-0">
+                                    <img src="{% if item.product.image %}{{ item.product.image.url }}{% else %}{% static 'images/default-plant.jpg' %}{% endif %}" alt="{{ item.product.name }}" width="60" class="img-fluid">
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">{{ item.product.name }}</h6>
+                                    <small class="text-muted">Qty: {{ item.quantity }}</small>
+                                </div>
+                                <div class="text-end">
+                                    <div class="fw-bold">₹{{ item.get_cost|floatformat:2 }}</div>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h6 class="mb-3">We Accept</h6>
+                        <div class="d-flex gap-2">
+                            <img src="https://via.placeholder.com/40" alt="Visa" class="img-fluid" style="width: 40px;">
+                            <img src="https://via.placeholder.com/40" alt="Mastercard" class="img-fluid" style="width: 40px;">
+                            <img src="https://via.placeholder.com/40" alt="American Express" class="img-fluid" style="width: 40px;">
+                            <img src="https://via.placeholder.com/40" alt="PayPal" class="img-fluid" style="width: 40px;">
+                        </div>
+                        <p class="small text-muted mt-2 mb-0">Your payment information is secure. We don't store your credit card details.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            Your cart is empty. <a href="{% url 'store:product_list' %}">Continue shopping</a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const checkoutForm = document.getElementById('checkoutForm');
+        const paymentMethodRadios = document.querySelectorAll('input[name="payment_method"]');
+        const creditCardDetails = document.getElementById('credit-card-details');
+        
+        // Toggle credit card details based on payment method
+        paymentMethodRadios.forEach(radio => {
+            radio.addEventListener('change', function() {
+                if (this.value === 'razorpay') {
+                    creditCardDetails.classList.remove('d-none');
+                } else {
+                    creditCardDetails.classList.add('d-none');
+                }
+            });
+        });
+        
+        // Handle form submission
+        checkoutForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+            
+            // Disable submit button to prevent double submission
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+            
+            // Collect form data
+            const formData = new FormData(checkoutForm);
+            
+            // Add payment method to form data
+            formData.append('payment_method', paymentMethod);
+            
+            // Submit form via AJAX
+            fetch(checkoutForm.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    if (paymentMethod === 'razorpay' && data.razorpay) {
+                        // Handle Razorpay payment
+                        const options = {
+                            key: data.razorpay.key_id,
+                            amount: data.razorpay.amount,
+                            currency: data.razorpay.currency,
+                            name: 'Angel\'s Plant Shop',
+                            description: 'Order #' + data.order_number,
+                            order_id: data.razorpay.order_id,
+                            handler: function(response) {
+                                // On successful payment, redirect to success page
+                                // The webhook will handle the payment verification
+                                window.location.href = data.redirect_url;
+                            },
+                            prefill: {
+                                name: '{{ user.get_full_name|escapejs }}',
+                                email: '{{ user.email|escapejs }}',
+                                contact: '{{ user.profile.phone|default:""|escapejs }}'
+                            },
+                            theme: {
+                                color: '#4F46E5'
+                            },
+                            modal: {
+                                ondismiss: function() {
+                                    // Re-enable submit button if payment is cancelled
+                                    submitBtn.disabled = false;
+                                    submitBtn.innerHTML = 'Place Order';
+                                }
+                            }
+                        };
+                        
+                        const rzp = new Razorpay(options);
+                        rzp.open();
+                    } else {
+                        // For cash on delivery, redirect to success page
+                        window.location.href = data.redirect_url;
+                    }
+                } else {
+                    // Show error message
+                    alert(data.message || 'An error occurred. Please try again.');
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = 'Place Order';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred. Please try again.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = 'Place Order';
+            });
+        });
+    });
+    // Form validation and submission
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('checkoutForm');
+        const submitBtn = document.getElementById('submit-order-btn');
+        const submitBtnText = document.getElementById('submit-btn-text');
+        const submitBtnSpinner = document.getElementById('submit-btn-spinner');
+        const formErrors = document.getElementById('form-errors');
+        
+        if (form && submitBtn) {
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault();
+                
+                // Basic form validation
+                if (!form.checkValidity()) {
+                    event.stopPropagation();
+                    form.classList.add('was-validated');
+                    return;
+                }
+                
+                // Show loading state
+                submitBtn.disabled = true;
+                submitBtnText.textContent = 'Processing...';
+                submitBtnSpinner.classList.remove('d-none');
+                
+                // Clear previous errors
+                if (formErrors) {
+                    formErrors.classList.add('d-none');
+                    formErrors.textContent = '';
+                }
+                
+                // Get selected payment method
+                const paymentMethod = form.querySelector('input[name="paymentMethod"]:checked');
+                
+                if (!paymentMethod) {
+                    showFormError('Please select a payment method');
+                    resetSubmitButton();
+                    return;
+                }
+                
+                // Handle Razorpay payment
+                if (paymentMethod.value === 'razorpay') {
+                    try {
+                        // Create Razorpay order
+                        const response = await fetch('{% url "payment:create_order" %}', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'X-CSRFToken': '{{ csrf_token }}',
+                                'X-Requested-With': 'XMLHttpRequest'
+                            },
+                            credentials: 'same-origin'
+                        });
+                        
+                        const data = await response.json();
+                        
+                        if (data.status === 'success') {
+                            // Open Razorpay checkout
+                            const options = {
+                                key: data.key,
+                                amount: data.amount,
+                                currency: data.currency || 'INR',
+                                name: "Angel's Plant Shop",
+                                description: `Order #${data.order_number || 'N/A'}`,
+                                order_id: data.order_id,
+                                handler: function (response) {
+                                    // Handle successful payment
+                                    window.location.href = `{% url 'payment:payment_success' %}?payment_id=${response.razorpay_payment_id}&order_id=${data.order_id}`;
+                                },
+                                prefill: {
+                                    name: '{{ user.get_full_name|default:user.username|escapejs }}',
+                                    email: '{{ user.email|escapejs }}',
+                                    contact: '{{ user.profile.phone|default:""|escapejs }}'
+                                },
+                                theme: {
+                                    color: '#4B8A08'
+                                },
+                                modal: {
+                                    ondismiss: function() {
+                                        resetSubmitButton();
+                                    }
+                                }
+                            };
+                            
+                            const rzp = new Razorpay(options);
+                            rzp.open();
+                            resetSubmitButton();
+                            
+                        } else {
+                            throw new Error(data.message || 'Failed to create order');
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error:', error);
+                        showFormError(error.message || 'An error occurred while processing your payment. Please try again.');
+                        resetSubmitButton();
+                    }
+                    
+                } else if (paymentMethod.value === 'cod') {
+                    // Handle Cash on Delivery
+                    try {
+                        const response = await fetch(form.action, {
+                            method: 'POST',
+                            body: new FormData(form),
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            const result = await response.json();
+                            if (result.redirect_url) {
+                                window.location.href = result.redirect_url;
+                            } else {
+                                throw new Error('No redirect URL provided');
+                            }
+                        } else {
+                            throw new Error('Failed to process order');
+                        }
+                        
+                    } catch (error) {
+                        console.error('Error:', error);
+                        showFormError('An error occurred while processing your order. Please try again.');
+                        resetSubmitButton();
+                    }
+                }
+            });
+        }
+        
+        function showFormError(message) {
+            if (formErrors) {
+                formErrors.textContent = message;
+                formErrors.classList.remove('d-none');
+                formErrors.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                alert(message);
+            }
+        }
+        
+        function resetSubmitButton() {
+            if (submitBtn && submitBtnText && submitBtnSpinner) {
+                submitBtn.disabled = false;
+                submitBtnText.textContent = 'Place Order';
+                submitBtnSpinner.classList.add('d-none');
+            }
+        }
+        
+        // Format credit card expiration date
+        const ccExpiration = document.getElementById('cc-expiration');
+        if (ccExpiration) {
+            ccExpiration.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                
+                if (value.length > 2) {
+                    value = value.substring(0, 2) + '/' + value.substring(2, 4);
+                }
+                
+                e.target.value = value;
+            });
+        }
+        
+        // Format credit card number
+        const ccNumber = document.getElementById('cc-number');
+        if (ccNumber) {
+            ccNumber.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                let formatted = '';
+                
+                for (let i = 0; i < value.length; i++) {
+                    if (i > 0 && i % 4 === 0) {
+                        formatted += ' ';
+                    }
+                    if (i < 16) { // Limit to 16 digits
+                        formatted += value[i];
+                    }
+                }
+                
+                e.target.value = formatted;
+            });
+        }
+        
+        // Format CVV
+        const ccCvv = document.getElementById('cc-cvv');
+        if (ccCvv) {
+            ccCvv.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                e.target.value = value.substring(0, 4); // Limit to 4 digits
+            });
+        }
+    });
+</script>
+{% endblock %}

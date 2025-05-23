@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title|default:"About Us - Angel's Plant Shop" }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <!-- Hero Section -->
+    <div class="row align-items-center mb-5">
+        <div class="col-lg-6">
+            <h1 class="display-4 fw-bold mb-4">Our Story</h1>
+            <p class="lead">Bringing nature's beauty into your home since 2020</p>
+            <p>At Angel's Plant Shop, we believe that every home deserves a touch of green. What started as a small family nursery has grown into a beloved destination for plant enthusiasts across the country.</p>
+        </div>
+        <div class="col-lg-6">
+            <img src="https://images.pexels.com/photos/4503752/pexels-photo-4503752.jpeg" alt="Our Plant Shop" class="img-fluid rounded shadow">
+        </div>
+    </div>
+
+    <!-- Mission Section -->
+    <div class="row my-5 py-4 bg-light rounded-3">
+        <div class="col-12 text-center mb-4">
+            <h2 class="fw-bold">Our Mission</h2>
+            <p class="lead">To make indoor and outdoor gardening accessible to everyone</p>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-0">
+                <div class="card-body text-center">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                        <i class="fas fa-leaf fa-2x text-success"></i>
+                    </div>
+                    <h4>Quality Plants</h4>
+                    <p>We source only the healthiest plants from trusted growers.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-0">
+                <div class="card-body text-center">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                        <i class="fas fa-heart fa-2x text-success"></i>
+                    </div>
+                    <h4>Expert Care</h4>
+                    <p>Our team provides expert advice to help your plants thrive.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-0">
+                <div class="card-body text-center">
+                    <div class="bg-success bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 80px; height: 80px;">
+                        <i class="fas fa-globe-americas fa-2x text-success"></i>
+                    </div>
+                    <h4>Sustainable</h4>
+                    <p>We're committed to eco-friendly practices and packaging.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Section -->
+    <div class="row my-5">
+        <div class="col-12 text-center mb-5">
+            <h2 class="fw-bold">Meet Our Team</h2>
+            <p class="lead">The passionate people behind Angel's Plant Shop</p>
+        </div>
+        {% for member in team_members %}
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <img src="{{ member.image }}" class="card-img-top" alt="{{ member.name }}" style="height: 300px; object-fit: cover;">
+                <div class="card-body text-center">
+                    <h4 class="card-title mb-1">{{ member.name }}</h4>
+                    <p class="text-muted">{{ member.position }}</p>
+                    <p class="card-text">{{ member.bio }}</p>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Testimonials -->
+    <div class="row my-5 py-4 bg-light rounded-3">
+        <div class="col-12 text-center mb-4">
+            <h2 class="fw-bold">What Our Customers Say</h2>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <p class="card-text">"The plants I received were healthy and beautiful. The packaging was eco-friendly and secure."</p>
+                    <p class="text-muted mb-0">- Sarah M.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                    </div>
+                    <p class="card-text">"Excellent customer service! They helped me choose the perfect plants for my low-light apartment."</p>
+                    <p class="text-muted mb-0">- David K.</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="mb-3">
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="fas fa-star text-warning"></i>
+                        <i class="far fa-star text-warning"></i>
+                    </div>
+                    <p class="card-text">"My plants arrived quickly and in perfect condition. Will definitely order again!"</p>
+                    <p class="text-muted mb-0">- Priya R.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Call to Action -->
+    <div class="row my-5 py-5 text-center">
+        <div class="col-12">
+            <h2 class="fw-bold mb-4">Ready to Start Your Plant Journey?</h2>
+            <p class="lead mb-4">Explore our collection of beautiful plants and bring nature into your home today.</p>
+            <a href="{% url 'store:product_list' %}" class="btn btn-success btn-lg px-4">Shop Now</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        transition: transform 0.3s ease;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+    }
+    .team-member-img {
+        width: 150px;
+        height: 150px;
+        object-fit: cover;
+        border-radius: 50%;
+        margin: 0 auto 1rem;
+        border: 5px solid #fff;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+</style>
+{% endblock %}

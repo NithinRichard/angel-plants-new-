@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container">
+    <div class="company-info">
+        <h2>{{ company_info.name }}</h2>
+        <p>{{ company_info.address }}</p>
+        <p>Phone: {{ company_info.phone }}</p>
+        <p>Email: {{ company_info.email }}</p>
+        <p>GSTIN: {{ company_info.gstin }}</p>
+    </div>
+
+    <div class="invoice-header">
+        <h1>INVOICE</h1>
+    </div>
+
+    <div class="invoice-details">
+        <div class="row">
+            <div class="col-md-6">
+                <h4>Bill To:</h4>
+                <p>{{ order.first_name }} {{ order.last_name }}</p>
+                <p>{{ order.address }}</p>
+                <p>{{ order.city }}, {{ order.state }} {{ order.postal_code }}</p>
+                <p>{{ order.country }}</p>
+            </div>
+            <div class="col-md-6">
+                <h4>Invoice Details:</h4>
+                <p>Invoice Number: {{ order.order_number }}</p>
+                <p>Date: {{ order.created_at|date:"F j, Y" }}</p>
+                <p>Payment Status: {% if order.payment_status %}Paid{% else %}Unpaid{% endif %}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="invoice-items">
+        <table class="table">
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Quantity</th>
+                    <th>Price</th>
+                    <th>Subtotal</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in order.items.all %}
+                <tr>
+                    <td>{{ item.product.name }}</td>
+                    <td>{{ item.quantity }}</td>
+                    <td>₹{{ item.price }}</td>
+                    <td>₹{{ item.quantity|multiply:item.price }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3">Subtotal</td>
+                    <td>₹{{ subtotal }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3">Shipping</td>
+                    <td>₹{{ shipping }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3">GST (18%)</td>
+                    <td>₹{{ tax }}</td>
+                </tr>
+                <tr>
+                    <td colspan="3" class="text-bold">Total</td>
+                    <td class="text-bold">₹{{ total }}</td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="invoice-total">
+        <p>Thank you for your business!</p>
+        <p>This is a computer-generated invoice and does not require a signature.</p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        line-height: 1.6;
+    }
+    
+    .company-info {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .invoice-header {
+        text-align: center;
+        margin-bottom: 30px;
+    }
+    
+    .invoice-header h1 {
+        font-size: 24px;
+        color: #333;
+    }
+    
+    .invoice-details {
+        margin-bottom: 30px;
+    }
+    
+    .invoice-details h4 {
+        margin-bottom: 10px;
+        color: #333;
+    }
+    
+    .invoice-items {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .invoice-items th,
+    .invoice-items td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+    }
+    
+    .invoice-items th {
+        background-color: #f4f4f4;
+        font-weight: bold;
+    }
+    
+    .invoice-items tfoot td {
+        font-weight: bold;
+    }
+    
+    .invoice-total {
+        margin-top: 30px;
+        text-align: center;
+        font-size: 12px;
+        color: #666;
+    }
+    
+    .text-bold {
+        font-weight: bold;
+    }
+</style>
+{% endblock %}

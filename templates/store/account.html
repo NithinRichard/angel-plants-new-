@@ -1,0 +1,168 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}My Account - Angel's Plants{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 mb-4">
+            {% include 'store/account_sidebar.html' %}
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">My Profile</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-3 fw-bold">Name:</div>
+                        <div class="col-md-9">{{ user.get_full_name|default:user.username }}</div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-3 fw-bold">Email:</div>
+                        <div class="col-md-9">{{ user.email }}</div>
+                    </div>
+                    <div class="row mb-4">
+                        <div class="col-md-3 fw-bold">Member since:</div>
+                        <div class="col-md-9">{{ user.date_joined|date:"F j, Y" }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order History -->
+            <div class="card mt-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Recent Orders</h5>
+                </div>
+                <div class="card-body">
+                    {% if orders %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for order in orders|slice:":5" %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'store:order_detail' order_number=order.order_number %}">
+                                                {{ order.order_number|truncatechars:10 }}
+                                            </a>
+                                        </td>
+                                        <td>{{ order.created|date:"M d, Y" }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ order.status|lower }}">
+                                                {{ order.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">${{ order.total_amount|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="text-end mt-3">
+                            <a href="{% url 'store:order_history' %}" class="btn btn-outline-primary">
+                                View All Orders
+                            </a>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">You haven't placed any orders yet.</p>
+                        <a href="{% url 'store:product_list' %}" class="btn btn-primary">
+                            Start Shopping
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Address Book -->
+            <div class="card mt-4">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Address Book</h5>
+                    <a href="{% url 'store:address_create' %}" class="btn btn-light btn-sm">
+                        <i class="fas fa-plus me-1"></i> Add Address
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if user.addresses.exists %}
+                        <div class="row g-4">
+                            {% for address in user.addresses.all|slice:":2" %}
+                            <div class="col-md-6">
+                                <div class="card h-100 {% if address.default %}border-primary{% else %}border-light{% endif %}">
+                                    <div class="card-body">
+                                        <h6 class="card-title">
+                                            {{ address.get_address_type_display }}
+                                            {% if address.default %}
+                                                <span class="badge bg-primary float-end">Default</span>
+                                            {% endif %}
+                                        </h6>
+                                        <address class="mb-0">
+                                            {{ address.get_full_name }}<br>
+                                            {{ address.address_line1 }}<br>
+                                            {% if address.address_line2 %}
+                                                {{ address.address_line2 }}<br>
+                                            {% endif %}
+                                            {{ address.city }}, {{ address.state }} {{ address.postal_code }}<br>
+                                            {{ address.country.name }}<br>
+                                            {% if address.phone %}
+                                                <abbr title="Phone">P:</abbr> {{ address.phone }}
+                                            {% endif %}
+                                        </address>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <div class="text-end mt-3">
+                            <a href="{% url 'store:address_book' %}" class="btn btn-outline-primary">
+                                Manage Addresses
+                            </a>
+                        </div>
+                    {% else %}
+                        <p class="text-muted">You haven't added any addresses yet.</p>
+                        <a href="{% url 'store:address_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus me-2"></i> Add Your First Address
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .badge {
+        font-size: 0.875em;
+        font-weight: 500;
+        padding: 0.35em 0.65em;
+    }
+    
+    .badge.pending { background-color: #ffc107; color: #000; }
+    .badge.paid { background-color: #0d6efd; color: #fff; }
+    .badge.processing { background-color: #6c757d; color: #fff; }
+    .badge.shipped { background-color: #0dcaf0; color: #000; }
+    .badge.delivered { background-color: #198754; color: #fff; }
+    .badge.cancelled { background-color: #dc3545; color: #fff; }
+    .badge.refunded { background-color: #6f42c1; color: #fff; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Account page loaded');
+        // Add any account page specific JavaScript here
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,172 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero-section {
+        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1472&q=80');
+        background-size: cover;
+        background-position: center;
+        color: white;
+        padding: 150px 0;
+        text-align: center;
+        margin-top: -20px;
+    }
+    .product-card {
+        transition: transform 0.3s;
+        margin-bottom: 20px;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+    .section-title {
+        position: relative;
+        margin-bottom: 40px;
+        padding-bottom: 15px;
+        text-align: center;
+    }
+    .section-title:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 3px;
+        background-color: var(--primary-color);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="container">
+            <h1 class="display-4 fw-bold mb-4">Welcome to Angel's Plant Shop</h1>
+            <p class="lead mb-4">Discover our wide range of beautiful plants for your home and garden</p>
+            <a href="{% url 'store:product_list' %}" class="btn btn-success btn-lg">Shop Now</a>
+        </div>
+    </section>
+
+    <!-- Featured Categories -->
+    <section class="py-5">
+        <div class="container">
+            <h2 class="text-center section-title">Shop by Category</h2>
+            <div class="row">
+                {% for category in categories %}
+                <div class="col-md-3 col-6 mb-4">
+                    <div class="card h-100 product-card">
+                        <img src="{{ category.image.url|default:'https://via.placeholder.com/300' }}" class="card-img-top" alt="{{ category.name }}">
+                        <div class="card-body text-center">
+                            <h5 class="card-title">{{ category.name }}</h5>
+                            <a href="{% url 'store:product_list' %}?category={{ category.slug }}" class="btn btn-outline-success">View Products</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Products -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <h2 class="text-center section-title">Featured Products</h2>
+            <div class="row">
+                {% for product in featured_products %}
+                <div class="col-lg-3 col-md-4 col-6 mb-4">
+                    <div class="card h-100 product-card">
+                        <img src="{{ product.image.url|default:'https://via.placeholder.com/300' }}" class="card-img-top" alt="{{ product.name }}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ product.name }}</h5>
+                            <p class="card-text">${{ product.price }}</p>
+                            <a href="{% url 'store:product_detail' slug=product.slug %}" class="btn btn-outline-success w-100">View Details</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Bestsellers -->
+    <section class="py-5">
+        <div class="container">
+            <h2 class="text-center section-title">Bestsellers</h2>
+            <div class="row">
+                {% for product in bestsellers %}
+                <div class="col-lg-3 col-md-4 col-6 mb-4">
+                    <div class="card h-100 product-card">
+                        <img src="{{ product.image.url|default:'https://via.placeholder.com/300' }}" class="card-img-top" alt="{{ product.name }}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ product.name }}</h5>
+                            <p class="card-text">${{ product.price }}</p>
+                            <a href="{% url 'store:product_detail' slug=product.slug %}" class="btn btn-outline-success w-100">View Details</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- New Arrivals -->
+    <section class="py-5 bg-light">
+        <div class="container">
+            <h2 class="text-center section-title">New Arrivals</h2>
+            <div class="row">
+                {% for product in new_arrivals %}
+                <div class="col-lg-3 col-md-4 col-6 mb-4">
+                    <div class="card h-100 product-card">
+                        <img src="{{ product.image.url|default:'https://via.placeholder.com/300' }}" class="card-img-top" alt="{{ product.name }}">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ product.name }}</h5>
+                            <p class="card-text">${{ product.price }}</p>
+                            <a href="{% url 'store:product_detail' slug=product.slug %}" class="btn btn-outline-success w-100">View Details</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+
+    <!-- Newsletter -->
+    <section class="py-5 bg-success text-white">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-md-8 text-center">
+                    <h3 class="mb-4">Subscribe to Our Newsletter</h3>
+                    <p class="mb-4">Get the latest updates on new products and upcoming sales</p>
+                    <form class="row g-3 justify-content-center">
+                        <div class="col-md-8">
+                            <input type="email" class="form-control form-control-lg" placeholder="Enter your email">
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-light btn-lg w-100">Subscribe</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Any additional JavaScript for the home page can go here
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

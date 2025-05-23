@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{{ site_name }}{% endblock %}</title>
+    <style type="text/css">
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            font-size: 16px;
+            line-height: 1.6;
+            color: #333333;
+            background-color: #f5f5f5;
+        }
+        .email-container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: #ffffff;
+        }
+        .email-header {
+            padding: 30px 30px 20px;
+            background: #4CAF50;
+            color: #ffffff;
+            text-align: center;
+        }
+        .email-header h1 {
+            margin: 0;
+            font-size: 24px;
+        }
+        .email-body {
+            padding: 0;
+        }
+        .email-footer {
+            padding: 20px 30px;
+            background: #f5f5f5;
+            color: #777777;
+            font-size: 14px;
+            text-align: center;
+        }
+        .email-footer a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background-color: #4CAF50;
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: 500;
+        }
+        .order-details {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .order-details th, .order-details td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #eeeeee;
+        }
+        .order-details th {
+            background-color: #f9f9f9;
+        }
+    </style>
+</head>
+<body>
+    <table class="email-container" width="100%" cellspacing="0" cellpadding="0">
+        <tr>
+            <td class="email-header">
+                <h1>{{ site_name }}</h1>
+            </td>
+        </tr>
+        <tr>
+            <td class="email-body">
+                {% block content %}{% endblock %}
+            </td>
+        </tr>
+        <tr>
+            <td class="email-footer">
+                <p>&copy; {% now "Y" %} {{ site_name }}. All rights reserved.</p>
+                <p>
+                    <a href="{{ protocol }}://{{ site_domain }}{% url 'store:home' %}">Home</a> | 
+                    <a href="{{ protocol }}://{{ site_domain }}{% url 'store:contact' %}">Contact Us</a> | 
+                    <a href="{{ protocol }}://{{ site_domain }}{% url 'store:privacy' %}">Privacy Policy</a>
+                </p>
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

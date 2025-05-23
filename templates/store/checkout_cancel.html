@@ -1,0 +1,37 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}Checkout Cancelled - Angel's Plants{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-12 text-center">
+            <div class="mb-4">
+                <i class="fas fa-times-circle text-danger" style="font-size: 5rem;"></i>
+            </div>
+            
+            <h1 class="mb-4">Checkout Cancelled</h1>
+            <p class="lead">{{ message|default:"Your checkout process was cancelled." }}</p>
+            
+            <div class="mt-5">
+                <a href="{% url 'store:product_list' %}" class="btn btn-outline-primary me-2">
+                    Continue Shopping
+                </a>
+                <a href="{% url 'store:cart' %}" class="btn btn-primary">
+                    Return to Cart
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // You can add any client-side logic here if needed
+        console.log('Checkout was cancelled');
+    });
+</script>
+{% endblock %}

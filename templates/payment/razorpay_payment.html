@@ -1,0 +1,175 @@
+<!-- Razorpay Payment Form -->
+<div class="payment-method mb-4">
+    <div class="form-check">
+        <input class="form-check-input" type="radio" name="paymentMethod" id="razorpay" value="razorpay" {% if not order or order.total_amount <= 0 %}disabled{% endif %} required>
+        <label class="form-check-label fw-bold" for="razorpay">
+            <i class="fas fa-credit-card me-2"></i>Pay with Razorpay
+        </label>
+        <div id="razorpay-payment-form" class="mt-3 p-3 border rounded" style="display: none;">
+            <p class="mb-3">You will be redirected to Razorpay's secure payment page to complete your purchase.</p>
+            <div id="razorpay-button" class="btn btn-primary">
+                Pay Now ₹{{ order.get_total_with_shipping|floatformat:2 }}
+            </div>
+            <div id="razorpay-error" class="alert alert-danger mt-2 d-none"></div>
+        </div>
+        {% if not order or order.total_amount <= 0 %}
+            <small class="text-danger">Invalid order amount</small>
+        {% endif %}
+    </div>
+</div>
+
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+    // Debug Razorpay script loading
+    console.log('Razorpay script loaded?', typeof Razorpay !== 'undefined');
+    if (typeof Razorpay === 'undefined') {
+        console.error('Razorpay script failed to load!');
+    } else {
+        console.log('Razorpay version:', Razorpay.VERSION);
+    }
+    // Show/hide Razorpay form when selected
+    document.addEventListener('DOMContentLoaded', function() {
+        const razorpayRadio = document.getElementById('razorpay');
+        const razorpayForm = document.getElementById('razorpay-payment-form');
+        const razorpayBtn = document.getElementById('razorpay-button');
+        const razorpayError = document.getElementById('razorpay-error');
+        
+        if (razorpayRadio) {
+            razorpayRadio.addEventListener('change', function() {
+                if (razorpayForm) {
+                    razorpayForm.style.display = this.checked ? 'block' : 'none';
+                }
+            });
+        }
+
+        // Handle Razorpay payment
+        if (razorpayBtn) {
+            razorpayBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                // Hide any previous errors
+                if (razorpayError) {
+                    razorpayError.classList.add('d-none');
+                }
+                
+                // Show loading state
+                const originalText = razorpayBtn.innerHTML;
+                razorpayBtn.disabled = true;
+                razorpayBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+                
+                // Show loading state
+                const submitButton = document.querySelector('button[type="submit"]');
+                const originalButtonText = submitButton.innerHTML;
+                submitButton.disabled = true;
+                submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+                // Create Razorpay order
+                console.log('Creating Razorpay order...');
+                fetch('{% url "payment:create_order" %}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({})
+                })
+                .then(response => {
+                    console.log('Order creation response status:', response.status);
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Order creation response:', data);
+                    if (data.status === 'success') {
+                        // Open Razorpay checkout
+                        const options = {
+                            key: data.key,
+                            amount: data.amount,
+                            currency: data.currency || 'INR',
+                            name: "Angel's Plant Shop",
+                            description: `Order #${data.order_number || 'N/A'}`,
+                            order_id: data.order_id,
+                            handler: function (response) {
+                                // Redirect to success page with payment details and signature
+                                window.location.href = `{% url 'payment:payment_success' %}` +
+                                    `?payment_id=${response.razorpay_payment_id}` +
+                                    `&order_id=${data.order_id}` +
+                                    `&signature=${response.razorpay_signature}`;
+                            },
+                            prefill: {
+                                name: '{{ user.get_full_name|default:user.username|escapejs }}',
+                                email: '{{ user.email|escapejs }}',
+                                contact: '{{ user.profile.phone|default:""|escapejs }}'
+                            },
+                            theme: {
+                                color: '#4B8A08' // Green color matching the theme
+                            },
+                            modal: {
+                                ondismiss: function() {
+                                    // Handle payment failure/dismiss
+                                    if (razorpayBtn) {
+                                        razorpayBtn.disabled = false;
+                                        razorpayBtn.innerHTML = 'Retry Payment';
+                                    }
+                                }
+                            },
+                            notes: {
+                                order_id: data.order_number || '',
+                                user_id: '{{ user.id }}'
+                            }
+                        };
+                        
+                        const rzp = new Razorpay(options);
+                        rzp.open();
+                        
+                        // Reset button state after modal opens
+                        razorpayBtn.disabled = false;
+                        razorpayBtn.innerHTML = originalText;
+                        
+                    } else {
+                        // Handle error from server
+                        const errorMessage = data.message || 'Failed to create order. Please try again.';
+                        showRazorpayError(errorMessage);
+                        razorpayBtn.disabled = false;
+                        razorpayBtn.innerHTML = originalText;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error creating Razorpay order:', error);
+                    // Reset button state
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = originalButtonText;
+                    
+                    // Show detailed error message
+                    const errorMessage = error.message || 'An unexpected error occurred';
+                    const errorDetail = error.response ? ` (Status: ${error.response.status})` : '';
+                    alert(`Payment Error: ${errorMessage}${errorDetail}. Please try again or contact support.`);
+                    
+                    // Log the full error for debugging
+                    console.error('Full error details:', {
+                        name: error.name,
+                        message: error.message,
+                        stack: error.stack,
+                        response: error.response
+                    });
+                });
+            });
+        }
+        
+        function showRazorpayError(message) {
+            if (razorpayError) {
+                razorpayError.textContent = message;
+                razorpayError.classList.remove('d-none');
+                
+                // Scroll to error message
+                razorpayError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                // Fallback to alert if error element not found
+                alert(message);
+            }
+        }
+    });
+</script>

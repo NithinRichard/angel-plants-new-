@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Update Order #{{ order.order_number }} - Staff Panel{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'store:staff_dashboard' %}">Staff Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'store:staff_order_list' %}">Orders</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'store:staff_order_detail' order_number=order.order_number %}">Order #{{ order.order_number }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">Update Order</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Update Order #{{ order.order_number }}</h2>
+                <span class="badge bg-{{ order.get_status_badge_class }}">
+                    {{ order.get_status_display }}
+                </span>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Order Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" id="order-update-form">
+                                {% csrf_token %}
+                                
+                                {% if form.non_field_errors %}
+                                    <div class="alert alert-danger">
+                                        {% for error in form.non_field_errors %}
+                                            {{ error }}
+                                        {% endfor %}
+                                    </div>
+                                {% endif %}
+
+                                <div class="mb-3">
+                                    <label for="{{ form.status.id_for_label }}" class="form-label">
+                                        {{ form.status.label }}
+                                    </label>
+                                    {{ form.status }}
+                                    {% if form.status.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.status.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.tracking_number.id_for_label }}" class="form-label">
+                                                {{ form.tracking_number.label }}
+                                            </label>
+                                            {{ form.tracking_number }}
+                                            {% if form.tracking_number.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.tracking_number.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="{{ form.shipping_cost.id_for_label }}" class="form-label">
+                                                {{ form.shipping_cost.label }}
+                                            </label>
+                                            <div class="input-group">
+                                                <span class="input-group-text">$</span>
+                                                {{ form.shipping_cost }}
+                                            </div>
+                                            {% if form.shipping_cost.errors %}
+                                                <div class="invalid-feedback d-block">
+                                                    {{ form.shipping_cost.errors.0 }}
+                                                </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.tracking_url.id_for_label }}" class="form-label">
+                                        {{ form.tracking_url.label }}
+                                    </label>
+                                    {{ form.tracking_url }}
+                                    {% if form.tracking_url.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.tracking_url.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        Enter the full tracking URL including https://
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                        {{ form.notes.label }}
+                                    </label>
+                                    {{ form.notes }}
+                                    {% if form.notes.errors %}
+                                        <div class="invalid-feedback d-block">
+                                            {{ form.notes.errors.0 }}
+                                        </div>
+                                    {% endif %}
+                                    <div class="form-text">
+                                        Add any internal notes about this order. These notes are only visible to staff members.
+                                    </div>
+                                </div>
+
+                                <div class="d-flex justify-content-between mt-4">
+                                    <a href="{% url 'store:staff_order_detail' order_number=order.order_number %}" class="btn btn-outline-secondary">
+                                        <i class="fas fa-arrow-left me-2"></i>Cancel
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save me-2"></i>Save Changes
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-lg-4">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Order Summary</h5>
+                        </div>
+                        <div class="card-body">
+                            <dl class="row mb-0">
+                                <dt class="col-6">Order Number:</dt>
+                                <dd class="col-6 text-end">{{ order.order_number }}</dd>
+
+                                <dt class="col-6">Date Placed:</dt>
+                                <dd class="col-6 text-end">{{ order.created_at|date:"M j, Y H:i" }}</dd>
+
+                                <dt class="col-6">Customer:</dt>
+                                <dd class="col-6 text-end">{{ order.user.get_full_name|default:order.user.username }}</dd>
+
+                                <dt class="col-6">Email:</dt>
+                                <dd class="col-6 text-end">{{ order.user.email }}</dd>
+
+                                <dt class="col-6">Items:</dt>
+                                <dd class="col-6 text-end">{{ order.get_cart_items }}</dd>
+
+                                <dt class="col-6">Order Total:</dt>
+                                <dd class="col-6 text-end">${{ order.get_total|floatformat:2 }}</dd>
+                            </dl>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">Order Status Guide</h5>
+                        </div>
+                        <div class="card-body">
+                            <ul class="list-unstyled small mb-0">
+                                <li class="mb-2">
+                                    <strong>Pending:</strong> Order received, not yet processed
+                                </li>
+                                <li class="mb-2">
+                                    <strong>Processing:</strong> Order is being prepared for shipment
+                                </li>
+                                <li class="mb-2">
+                                    <strong>Shipped:</strong> Order has been shipped to customer
+                                </li>
+                                <li class="mb-2">
+                                    <strong>Delivered:</strong> Order has been delivered
+                                </li>
+                                <li class="mb-2">
+                                    <strong>Cancelled:</strong> Order has been cancelled
+                                </li>
+                                <li>
+                                    <strong>Refunded:</strong> Order has been refunded
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize select2 if you're using it
+        if (typeof $ !== 'undefined' && $.fn.select2) {
+            $('#id_status').select2({
+                theme: 'bootstrap-5',
+                width: '100%',
+                placeholder: 'Select status',
+                allowClear: true
+            });
+        }
+
+        // Handle form submission
+        const form = document.getElementById('order-update-form');
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                // Add any client-side validation here
+                const statusField = document.getElementById('id_status');
+                if (statusField && !statusField.value) {
+                    e.preventDefault();
+                    alert('Please select a status for this order.');
+                    statusField.focus();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

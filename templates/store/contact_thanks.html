@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ page_title|default:"Thank You - Angel's Plant Shop" }}{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+            <div class="mb-4">
+                <i class="fas fa-check-circle text-success" style="font-size: 5rem;"></i>
+            </div>
+            <h1 class="display-4 fw-bold mb-4">Thank You!</h1>
+            <p class="lead mb-4">Your message has been sent successfully. We'll get back to you as soon as possible.</p>
+            
+            <div class="d-flex justify-content-center gap-3">
+                <a href="{% url 'store:product_list' %}" class="btn btn-success btn-lg">
+                    <i class="fas fa-home me-2"></i>Back to Home
+                </a>
+                <a href="{% url 'store:contact' %}" class="btn btn-outline-success btn-lg">
+                    <i class="fas fa-envelope me-2"></i>Send Another Message
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

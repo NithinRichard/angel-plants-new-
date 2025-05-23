@@ -1,0 +1,28 @@
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">My Account</h5>
+    </div>
+    <div class="list-group list-group-flush">
+        <a href="{% url 'store:account' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'account' %}active{% endif %}">
+            <i class="fas fa-user me-2"></i> My Profile
+        </a>
+        <a href="{% url 'store:order_history' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'order_history' or request.resolver_match.url_name == 'order_detail' %}active{% endif %}">
+            <i class="fas fa-shopping-bag me-2"></i> My Orders
+        </a>
+        <a href="{% url 'store:wishlist' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'wishlist' %}active{% endif %}">
+            <i class="far fa-heart me-2"></i> My Wishlist
+        </a>
+        <a href="{% url 'store:address_book' %}" class="list-group-item list-group-item-action {% if 'address' in request.resolver_match.url_name %}active{% endif %}">
+            <i class="fas fa-address-book me-2"></i> Address Book
+        </a>
+        <a href="{% url 'store:account_settings' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'account_settings' %}active{% endif %}">
+            <i class="fas fa-cog me-2"></i> Account Settings
+        </a>
+        <a href="{% url 'password_change' %}" class="list-group-item list-group-item-action {% if request.resolver_match.url_name == 'password_change' %}active{% endif %}">
+            <i class="fas fa-key me-2"></i> Change Password
+        </a>
+        <a href="{% url 'logout' %}" class="list-group-item list-group-item-action text-danger">
+            <i class="fas fa-sign-out-alt me-2"></i> Logout
+        </a>
+    </div>
+</div>

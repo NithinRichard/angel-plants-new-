@@ -1,0 +1,397 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Order Confirmation - Angel's Plant Shop{% endblock %}
+
+{% block extra_css %}
+<style>
+    .progress-steps {
+        position: relative;
+        display: flex;
+        justify-content: space-between;
+        margin: 2rem 0 3rem;
+    }
+    .progress-steps::before {
+        content: '';
+        position: absolute;
+        top: 15px;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background-color: #e9ecef;
+        z-index: 1;
+    }
+    .progress-bar {
+        position: absolute;
+        top: 15px;
+        left: 0;
+        height: 4px;
+        background-color: #198754;
+        z-index: 2;
+        transition: width 0.3s ease;
+    }
+    .step {
+        position: relative;
+        z-index: 3;
+        text-align: center;
+        width: 25%;
+    }
+    .step-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 50%;
+        background-color: #e9ecef;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 0.5rem;
+        font-weight: 600;
+    }
+    .step.active .step-icon {
+        background-color: #198754;
+        color: white;
+    }
+    .step.completed .step-icon {
+        background-color: #198754;
+        color: white;
+    }
+    .step.completed .step-icon::after {
+        content: '✓';
+    }
+    .step-label {
+        font-size: 0.8rem;
+        color: #6c757d;
+    }
+    .step.active .step-label {
+        color: #198754;
+        font-weight: 500;
+    }
+    .related-products .card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .related-products .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+    }
+    .order-summary {
+        position: sticky;
+        top: 1rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="text-center">
+        <div class="mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" fill="#198754" class="bi bi-check-circle-fill" viewBox="0 0 16 16">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/>
+            </svg>
+        </div>
+        <h1 class="display-5 fw-bold mb-3">Thank You for Your Order!</h1>
+        <p class="lead mb-4">Your order has been placed successfully.</p>
+        <div class="alert alert-success" role="alert">
+            <h4 class="alert-heading">Order #{{ order.id }}</h4>
+            <p class="mb-0">We've sent a confirmation email to <strong>{{ user.email }}</strong> with your order details.</p>
+        </div>
+    </div>
+    
+    <div class="row justify-content-center my-5">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Order Details</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Order Information</h6>
+                            <p class="mb-1"><strong>Order Number:</strong> #{{ order.id }}</p>
+                            <p class="mb-1"><strong>Date:</strong> {{ order.created|date:"F d, Y" }}</p>
+                            <p class="mb-1"><strong>Status:</strong> 
+                                <span class="badge bg-success">Processing</span>
+                            </p>
+                            <p class="mb-1"><strong>Payment Method:</strong> Credit Card</p>
+                            <p class="mb-0"><strong>Total:</strong> ₹{{ order.get_total_with_shipping|floatformat:2 }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Shipping Information</h6>
+                            <p class="mb-1"><strong>Name:</strong> {{ user.get_full_name|default:user.username }}</p>
+                            <p class="mb-1"><strong>Email:</strong> {{ user.email }}</p>
+                            <p class="mb-1"><strong>Phone:</strong> (123) 456-7890</p>
+                            <p class="mb-0">
+                                <strong>Address:</strong><br>
+                                123 Main St<br>
+                                Apt 4B<br>
+                                New York, NY 10001<br>
+                                United States
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Order Items</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Product</th>
+                                    <th class="text-end">Price</th>
+                                    <th class="text-center">Qty</th>
+                                    <th class="text-end">Subtotal</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.items.all %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" width="60" class="me-3">
+                                                <div>
+                                                    <h6 class="mb-1">{{ item.product.name }}</h6>
+                                                    <p class="text-muted mb-0">{{ item.product.category.name }}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td class="text-end">₹{{ item.price|floatformat:2 }}</td>
+                                        <td class="text-center">{{ item.quantity }}</td>
+                                        <td class="text-end">₹{{ item.get_cost|floatformat:2 }}</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-light">
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Subtotal:</strong></td>
+                                    <td class="text-end">₹{{ order.get_total_cost|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Shipping:</strong></td>
+                                    <td class="text-end">₹99.00</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Tax:</strong></td>
+                                    <td class="text-end">₹{{ order.get_tax|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="3" class="text-end"><strong>Total:</strong></td>
+                                    <td class="text-end"><strong>₹{{ order.get_total_with_shipping|floatformat:2 }}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Order Progress Tracker -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="mb-4">Order Status</h5>
+                    <div class="progress-steps">
+                        <div class="progress-bar" style="width: 25%;"></div>
+                        <div class="step active">
+                            <div class="step-icon">1</div>
+                            <div class="step-label">Order Placed</div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">2</div>
+                            <div class="step-label">Processing</div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">3</div>
+                            <div class="step-label">Shipped</div>
+                        </div>
+                        <div class="step">
+                            <div class="step-icon">4</div>
+                            <div class="step-label">Delivered</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- What's Next Section -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="mb-3">What's Next?</h5>
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="bg-light rounded-circle p-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#198754" class="bi bi-envelope" viewBox="0 0 16 16">
+                                    <path d="M0 4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V4Zm2-1a1 1 0 0 0-1 1v.217l7 4.2 7-4.2V4a1 1 0 0 0-1-1H2Zm13 2.383-4.708 2.825L15 11.105V5.383Zm-.034 6.876-5.64-3.471L8 9.583l-1.326-.795-5.64 3.47A1 1 0 0 0 2 13h12a1 1 0 0 0 .966-.741ZM1 11.105l4.708-2.897L1 5.383v5.722Z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Order Confirmation</h6>
+                            <p class="mb-0 text-muted">We've sent a confirmation email with your order details and tracking information.</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start mb-3">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="bg-light rounded-circle p-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#198754" class="bi bi-truck" viewBox="0 0 16 16">
+                                    <path d="M0 3.5A1.5 1.5 0 0 1 1.5 2h9A1.5 1.5 0 0 1 12 3.5V5h1.02a1.5 1.5 0 0 1 1.17.563l1.481 1.85a1.5 1.5 0 0 1 .329.938V10.5a1.5 1.5 0 0 1-1.5 1.5H14a2 2 0 1 1-4 0H5a2 2 0 1 1-3.998-.085A1.5 1.5 0 0 1 0 10.5v-7zm1.294 7.456A1.999 1.999 0 0 1 4.732 11h5.536a2.01 2.01 0 0 1 .732-.732V3.5a.5.5 0 0 0-.5-.5h-9a.5.5 0 0 0-.5.5v7a.5.5 0 0 0 .294.456zM12 10a2 2 0 0 1 1.732 1h.768a.5.5 0 0 0 .5-.5V8.35a.5.5 0 0 0-.11-.312l-1.48-1.85A.5.5 0 0 0 13.02 6H12v4zm-9 1a1 1 0 1 0 0 2 1 1 0 0 0 0-2zm9 0a1 1 0 1 0 0 2 1 1 0 0 0 0-2z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Shipping Updates</h6>
+                            <p class="mb-0 text-muted">You'll receive shipping confirmation when your order is on its way.</p>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-start">
+                        <div class="flex-shrink-0 me-3">
+                            <div class="bg-light rounded-circle p-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#198754" class="bi bi-headset" viewBox="0 0 16 16">
+                                    <path d="M8 1a5 5 0 0 0-5 5v1h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V6a6 6 0 1 1 12 0v6a2.5 2.5 0 0 1-2.5 2.5H9.366a1 1 0 0 1-.866.5h-1a1 1 0 1 1 0-2h1a1 1 0 0 1 1 1v2a2.5 2.5 0 0 0 2.5 2.5H13a1 1 0 0 0 1-1v-2a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v2a3 3 0 0 1-3 3h-1.5a1 1 0 0 1-.866-.5H11.5A3.5 3.5 0 0 1 8 10.5V8a.5.5 0 0 1 1 0v2.5a2.5 2.5 0 0 0 5 0V6A5 5 0 0 0 8 1z"/>
+                                </svg>
+                            </div>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Need Help?</h6>
+                            <p class="mb-0 text-muted">Have questions about your order? <a href="#">Contact our support team</a> or call us at (800) 123-4567.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Related Products -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="mb-4">You Might Also Like</h5>
+                    <div class="row related-products">
+                        {% for product in related_products|slice:":4" %}
+                        <div class="col-md-3 col-6 mb-4">
+                            <div class="card h-100">
+                                <a href="{{ product.get_absolute_url }}" class="text-decoration-none text-dark">
+                                    <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}">
+                                    <div class="card-body">
+                                        <h6 class="card-title">{{ product.name|truncatechars:30 }}</h6>
+                                        <p class="card-text text-success fw-bold">${{ product.price|floatformat:2 }}</p>
+                                    </div>
+                                </a>
+                                <div class="card-footer bg-transparent border-top-0">
+                                    <button class="btn btn-sm btn-success w-100 add-to-cart" data-product-id="{{ product.id }}">
+                                        <i class="fas fa-cart-plus me-1"></i> Add to Cart
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="d-grid gap-2 d-md-flex justify-content-md-center mt-4">
+                <a href="{% url 'store:product_list' %}" class="btn btn-outline-success btn-lg px-4 me-md-2">
+                    <i class="fas fa-shopping-bag me-2"></i>Continue Shopping
+                </a>
+                <a href="#" class="btn btn-success btn-lg px-4" id="trackOrderBtn">
+                    <i class="fas fa-truck me-2"></i>Track Order
+                </a>
+            </div>
+
+            <!-- Order Summary Sticky on Mobile -->
+            <div class="d-block d-md-none order-summary mt-4">
+                <div class="card">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Order Summary</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal:</span>
+                            <span>${{ order.get_total_cost|floatformat:2 }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Shipping:</span>
+                            <span>$5.99</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Tax:</span>
+                            <span>${{ order.get_tax|floatformat:2 }}</span>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between fw-bold">
+                            <span>Total:</span>
+                            <span>${{ order.get_total_with_shipping|floatformat:2 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/order-confirmation.js' %}"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Track order progress
+        const progressBar = document.querySelector('.progress-bar');
+        const steps = document.querySelectorAll('.step');
+        
+        // Simulate order progress (in a real app, this would come from the server)
+        function updateProgress(step) {
+            steps.forEach((s, index) => {
+                if (index < step) {
+                    s.classList.add('completed');
+                    s.classList.remove('active');
+                } else if (index === step) {
+                    s.classList.add('active');
+                    s.classList.remove('completed');
+                } else {
+                    s.classList.remove('active', 'completed');
+                }
+            });
+            
+            // Update progress bar
+            const progress = (step / (steps.length - 1)) * 100;
+            progressBar.style.width = progress + '%';
+        }
+        
+        // Initial progress (first step completed)
+        updateProgress(0);
+        
+        // Simulate order progress (for demo purposes)
+        let currentStep = 0;
+        const progressInterval = setInterval(() => {
+            if (currentStep < steps.length) {
+                updateProgress(currentStep);
+                currentStep++;
+            } else {
+                clearInterval(progressInterval);
+            }
+        }, 2000);
+        
+        // Track order button click
+        document.getElementById('trackOrderBtn').addEventListener('click', function(e) {
+            e.preventDefault();
+            // In a real app, this would redirect to the tracking page
+            alert('Order tracking will be available once your order is shipped. We\'ll send you a tracking number via email.');
+        });
+        
+        // Add to cart functionality for related products
+        document.querySelectorAll('.add-to-cart').forEach(button => {
+            button.addEventListener('click', function() {
+                const productId = this.dataset.productId;
+                // In a real app, this would make an AJAX call to add the item to cart
+                alert('Product added to cart!');
+                // You would typically call addToCart(productId) here
+            });
+        });
+    });
+</script>
+{% endblock %}
+
+{% block body_attrs %}
+    data-order-id="{{ order.id|escapejs }}"
+    data-order-total="{{ order.get_total_with_shipping|default:0|floatformat:2 }}"
+    data-order-tax="{{ order.get_tax|default:0|floatformat:2 }}"
+{% endblock %}

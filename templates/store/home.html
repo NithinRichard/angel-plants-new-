@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .hero-section {
+        background: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1472&q=80');
+        background-size: cover;
+        background-position: center;
+        color: white;
+        padding: 150px 0;
+        text-align: center;
+        margin-top: -20px;
+    }
+    .product-card {
+        transition: transform 0.3s;
+        margin-bottom: 20px;
+        border: none;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+    }
+    .section-title {
+        position: relative;
+        margin-bottom: 40px;
+        padding-bottom: 15px;
+        text-align: center;
+    }
+    .section-title:after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 80px;
+        height: 3px;
+        background-color: var(--primary-color);
+    }
+    .category-card {
+        transition: all 0.3s ease;
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        overflow: hidden;
+    }
+    .category-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .product-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="container">
+        <h1 class="display-4 fw-bold mb-4">Welcome to Angel's Plant Shop</h1>
+        <p class="lead mb-4">Discover our wide range of beautiful plants for your home and garden</p>
+        <a href="{% url 'store:product_list' %}" class="btn btn-light btn-lg">Shop Now</a>
+    </div>
+</section>
+
+<!-- Featured Categories -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="section-title">Shop by Category</h2>
+        <div class="row">
+            {% for category in categories %}
+            <div class="col-md-3 col-6 mb-4">
+                <div class="card h-100 category-card">
+                    <a href="{% url 'store:product_list' %}?category={{ category.slug }}" class="text-decoration-none text-dark">
+                        {% if category.image and category.image.url %}
+                            <img src="{{ category.image.url }}" class="card-img-top" alt="{{ category.name }}" style="height: 200px; object-fit: cover;">
+                        {% else %}
+                            <img src="https://via.placeholder.com/300?text=No+Image+Available" class="card-img-top" alt="{{ category.name }}" style="height: 200px; object-fit: cover;">
+                        {% endif %}
+                        <div class="card-body text-center">
+                            <h5 class="card-title mb-0">{{ category.name }}</h5>
+                            <span class="text-muted small">{{ category.product_count }} items</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- Featured Products -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="section-title">Featured Products</h2>
+        <div class="row">
+            {% for product in featured_products %}
+            <div class="col-lg-3 col-md-4 col-6 mb-4">
+                <div class="card h-100 product-card">
+                    {% if product.is_featured %}
+                        <span class="badge bg-success product-badge">Featured</span>
+                    {% endif %}
+                    <a href="{% url 'store:product_detail' slug=product.slug %}" class="text-decoration-none">
+                        {% if product.image and product.image.url %}
+                            <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                        {% else %}
+                            <img src="https://via.placeholder.com/300?text=No+Image+Available" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title text-dark">{{ product.name|truncatechars:30 }}</h5>
+                            <p class="card-text text-success fw-bold">${{ product.price }}</p>
+                            {% if product.quantity <= 0 and not product.allow_backorder %}
+                                <p class="text-danger small mb-2">Out of Stock</p>
+                            {% elif product.quantity <= 0 and product.allow_backorder %}
+                                <p class="text-warning small mb-2">Available for Backorder</p>
+                            {% else %}
+                                <p class="text-success small mb-2">In Stock ({{ product.quantity }} available)</p>
+                            {% endif %}
+                            {% if product.average_rating %}
+                                <div class="mb-2">
+                                    {% with ''|center:product.average_rating as range %}
+                                        {% for _ in range %}
+                                            <i class="fas fa-star text-warning"></i>
+                                        {% endfor %}
+                                    {% endwith %}
+                                    <small class="text-muted">({{ product.review_count }})</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+            <a href="{% url 'store:product_list' %}?featured=1" class="btn btn-outline-success">View All Featured Products</a>
+        </div>
+    </div>
+</section>
+
+<!-- Bestsellers -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="section-title">Bestsellers</h2>
+        <div class="row">
+            {% for product in bestsellers %}
+            <div class="col-lg-3 col-md-4 col-6 mb-4">
+                <div class="card h-100 product-card">
+                    <span class="badge bg-danger product-badge">Bestseller</span>
+                    <a href="{% url 'store:product_detail' slug=product.slug %}" class="text-decoration-none">
+                        {% if product.image and product.image.url %}
+                            <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                        {% else %}
+                            <img src="https://via.placeholder.com/300?text=No+Image+Available" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title text-dark">{{ product.name|truncatechars:30 }}</h5>
+                            <p class="card-text text-success fw-bold">${{ product.price }}</p>
+                            {% if product.quantity <= 0 and not product.allow_backorder %}
+                                <p class="text-danger small mb-2">Out of Stock</p>
+                            {% elif product.quantity <= 0 and product.allow_backorder %}
+                                <p class="text-warning small mb-2">Available for Backorder</p>
+                            {% else %}
+                                <p class="text-success small mb-2">In Stock ({{ product.quantity }} available)</p>
+                            {% endif %}
+                            {% if product.average_rating %}
+                                <div class="mb-2">
+                                    {% with ''|center:product.average_rating as range %}
+                                        {% for _ in range %}
+                                            <i class="fas fa-star text-warning"></i>
+                                        {% endfor %}
+                                    {% endwith %}
+                                    <small class="text-muted">({{ product.review_count }})</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+            <a href="{% url 'store:product_list' %}?bestseller=1" class="btn btn-outline-success">View All Bestsellers</a>
+        </div>
+    </div>
+</section>
+
+<!-- New Arrivals -->
+<section class="py-5 bg-light">
+    <div class="container">
+        <h2 class="section-title">New Arrivals</h2>
+        <div class="row">
+            {% for product in new_arrivals %}
+            <div class="col-lg-3 col-md-4 col-6 mb-4">
+                <div class="card h-100 product-card">
+                    <span class="badge bg-info product-badge">New</span>
+                    <a href="{% url 'store:product_detail' slug=product.slug %}" class="text-decoration-none">
+                        {% if product.image and product.image.url %}
+                            <img src="{{ product.image.url }}" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                        {% else %}
+                            <img src="https://via.placeholder.com/300?text=No+Image+Available" class="card-img-top" alt="{{ product.name }}" style="height: 200px; object-fit: cover;">
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title text-dark">{{ product.name|truncatechars:30 }}</h5>
+                            <p class="card-text text-success fw-bold">${{ product.price }}</p>
+                            {% if product.quantity <= 0 and not product.allow_backorder %}
+                                <p class="text-danger small mb-2">Out of Stock</p>
+                            {% elif product.quantity <= 0 and product.allow_backorder %}
+                                <p class="text-warning small mb-2">Available for Backorder</p>
+                            {% else %}
+                                <p class="text-success small mb-2">In Stock ({{ product.quantity }} available)</p>
+                            {% endif %}
+                            {% if product.average_rating %}
+                                <div class="mb-2">
+                                    {% with ''|center:product.average_rating as range %}
+                                        {% for _ in range %}
+                                            <i class="fas fa-star text-warning"></i>
+                                        {% endfor %}
+                                    {% endwith %}
+                                    <small class="text-muted">({{ product.review_count }})</small>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="text-center mt-4">
+            <a href="{% url 'store:product_list' %}?sort=newest" class="btn btn-outline-success">View All New Arrivals</a>
+        </div>
+    </div>
+</section>
+
+<!-- Testimonials -->
+<section class="py-5">
+    <div class="container">
+        <h2 class="section-title">What Our Customers Say</h2>
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="fas fa-quote-left fa-2x text-muted"></i>
+                        </div>
+                        <p class="card-text">"The plants I received were healthy and beautiful. The packaging was excellent, and they arrived in perfect condition."</p>
+                        <div class="mt-3">
+                            <img src="https://randomuser.me/api/portraits/women/32.jpg" class="rounded-circle mb-2" width="60" alt="Customer">
+                            <h5 class="mb-0">Sarah Johnson</h5>
+                            <p class="text-muted mb-0">Plant Enthusiast</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="fas fa-quote-left fa-2x text-muted"></i>
+                        </div>
+                        <p class="card-text">"Amazing variety of plants and excellent customer service. I'm very happy with my purchase and will definitely order again!"</p>
+                        <div class="mt-3">
+                            <img src="https://randomuser.me/api/portraits/men/45.jpg" class="rounded-circle mb-2" width="60" alt="Customer">
+                            <h5 class="mb-0">Michael Chen</h5>
+                            <p class="text-muted mb-0">Home Gardener</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 mb-4">
+                <div class="card h-100">
+                    <div class="card-body text-center">
+                        <div class="mb-3">
+                            <i class="fas fa-quote-left fa-2x text-muted"></i>
+                        </div>
+                        <p class="card-text">"The quality of the plants exceeded my expectations. They've added so much life to my apartment. Highly recommended!"</p>
+                        <div class="mt-3">
+                            <img src="https://randomuser.me/api/portraits/women/68.jpg" class="rounded-circle mb-2" width="60" alt="Customer">
+                            <h5 class="mb-0">Emily Rodriguez</h5>
+                            <p class="text-muted mb-0">Urban Gardener</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Newsletter -->
+<section class="py-5 bg-success text-white">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 text-center">
+                <h3 class="mb-4">Subscribe to Our Newsletter</h3>
+                <p class="mb-4">Get the latest updates on new products, exclusive offers, and gardening tips.</p>
+                <form class="row g-3 justify-content-center" action="#" method="post">
+                    {% csrf_token %}
+                    <div class="col-md-8">
+                        <input type="email" name="email" class="form-control form-control-lg" placeholder="Enter your email" required>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="submit" class="btn btn-light btn-lg w-100">Subscribe</button>
+                    </div>
+                </form>
+                <p class="small mt-3 mb-0">We respect your privacy. Unsubscribe at any time.</p>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize tooltips
+    document.addEventListener('DOMContentLoaded', function() {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+</script>
+{% endblock %}

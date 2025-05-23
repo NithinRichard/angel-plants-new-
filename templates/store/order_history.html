@@ -1,0 +1,175 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}Order History - Angel's Plants{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 mb-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Account</h5>
+                </div>
+                <div class="list-group list-group-flush">
+                    <a href="{% url 'store:account' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-user me-2"></i> My Profile
+                    </a>
+                    <a href="{% url 'store:order_history' %}" class="list-group-item list-group-item-action active">
+                        <i class="fas fa-box me-2"></i> My Orders
+                    </a>
+                    <a href="{% url 'password_change' %}" class="list-group-item list-group-item-action">
+                        <i class="fas fa-key me-2"></i> Change Password
+                    </a>
+                    <a href="{% url 'logout' %}" class="list-group-item list-group-item-action text-danger">
+                        <i class="fas fa-sign-out-alt me-2"></i> Logout
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Order History</h5>
+                    <a href="{% url 'store:account' %}" class="btn btn-sm btn-light">
+                        <i class="fas fa-arrow-left me-1"></i> Back to Account
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if orders %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Order #</th>
+                                        <th>Date</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Total</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for order in orders %}
+                                    <tr>
+                                        <td>
+                                            <a href="{% url 'store:order_detail' order_number=order.order_number %}">
+                                                {{ order.order_number|truncatechars:10 }}
+                                            </a>
+                                        </td>
+                                        <td>{{ order.created|date:"M d, Y" }}</td>
+                                        <td>
+                                            <span class="badge badge-{{ order.status|lower }}">
+                                                {{ order.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end">${{ order.total_amount|floatformat:2 }}</td>
+                                        <td class="text-end">
+                                            <a href="{% url 'store:order_detail' order_number=order.order_number %}" 
+                                               class="btn btn-sm btn-outline-primary">
+                                                View
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center py-4">
+                                            <p class="text-muted mb-3">You haven't placed any orders yet.</p>
+                                            <a href="{% url 'store:product_list' %}" class="btn btn-primary">
+                                                Start Shopping
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if is_paginated %}
+                        <nav aria-label="Order pagination" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                                            <span aria-hidden="true">&laquo;</span>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link" aria-hidden="true">&laquo;</span>
+                                    </li>
+                                {% endif %}
+
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% else %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                                            <span aria-hidden="true">&raquo;</span>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link" aria-hidden="true">&raquo;</span>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-box-open fa-4x text-muted mb-4"></i>
+                            <h4>No Orders Found</h4>
+                            <p class="text-muted mb-4">You haven't placed any orders yet.</p>
+                            <a href="{% url 'store:product_list' %}" class="btn btn-primary">
+                                <i class="fas fa-shopping-cart me-2"></i>Start Shopping
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .badge {
+        font-size: 0.875em;
+        font-weight: 500;
+        padding: 0.35em 0.65em;
+    }
+    
+    .badge-pending { background-color: #ffc107; color: #000; }
+    .badge-paid { background-color: #0d6efd; color: #fff; }
+    .badge-processing { background-color: #6c757d; color: #fff; }
+    .badge-shipped { background-color: #0dcaf0; color: #000; }
+    .badge-delivered { background-color: #198754; color: #fff; }
+    .badge-cancelled { background-color: #dc3545; color: #fff; }
+    .badge-refunded { background-color: #6f42c1; color: #fff; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('Order history page loaded');
+        // Add any order history page specific JavaScript here
+    });
+</script>
+{% endblock %}

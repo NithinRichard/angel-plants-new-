@@ -1,0 +1,272 @@
+{% extends 'store/base.html' %}
+{% load custom_filters %}
+
+{% block title %}Order Management - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Order Management</h1>
+        <a href="{% url 'store:staff_dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Filters</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="status" class="form-label">Status</label>
+                    <select name="status" id="status" class="form-select">
+                        <option value="">All Statuses</option>
+                        {% for value, label in status_choices %}
+                            <option value="{{ value }}" {% if request.GET.status == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">From Date</label>
+                    <input type="date" class="form-control" id="date_from" name="date_from" 
+                           value="{{ request.GET.date_from }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">To Date</label>
+                    <input type="date" class="form-control" id="date_to" name="date_to" 
+                           value="{{ request.GET.date_to }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-filter"></i> Apply Filters
+                    </button>
+                    <a href="{% url 'store:staff_order_list' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Search -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Search Orders</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-10">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="q" placeholder="Search by order number, customer name, or email" 
+                               value="{{ request.GET.q }}">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i> Search
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <a href="{% url 'store:staff_order_list' %}?export=csv{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}" 
+                       class="btn btn-success w-100">
+                        <i class="fas fa-file-csv"></i> Export CSV
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Orders Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Orders ({{ page_obj.paginator.count }})</h5>
+            <div class="d-flex">
+                <div class="dropdown me-2">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" id="perPageDropdown" 
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                        Show: {{ paginate_by }}
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="perPageDropdown">
+                        <li><a class="dropdown-item" href="?{% url_replace request 'paginate_by' '10' %}">10 per page</a></li>
+                        <li><a class="dropdown-item" href="?{% url_replace request 'paginate_by' '25' %}">25 per page</a></li>
+                        <li><a class="dropdown-item" href="?{% url_replace request 'paginate_by' '50' %}">50 per page</a></li>
+                        <li><a class="dropdown-item" href="?{% url_replace request 'paginate_by' '100' %}">100 per page</a></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Order #</th>
+                        <th>Date</th>
+                        <th>Customer</th>
+                        <th>Items</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for order in orders %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'store:staff_order_detail' order_number=order.order_number %}" 
+                               class="text-decoration-none fw-bold">
+                                {{ order.order_number }}
+                            </a>
+                        </td>
+                        <td>{{ order.created_at|date:"M d, Y" }}</td>
+                        <td>
+                            {% if order.user %}
+                                {{ order.user.get_full_name|default:order.user.email }}
+                            {% else %}
+                                Guest
+                            {% endif %}
+                        </td>
+                        <td>{{ order.items.count }} item{{ order.items.count|pluralize }}</td>
+                        <td>₹{{ order.get_total_cost|floatformat:2 }}</td>
+                        <td>
+                            <div class="dropdown">
+                                <button class="btn btn-sm btn-status dropdown-toggle status-{{ order.status|lower }}" 
+                                        type="button" id="statusDropdown{{ order.id }}" 
+                                        data-bs-toggle="dropdown" aria-expanded="false"
+                                        data-order-number="{{ order.order_number }}"
+                                        data-current-status="{{ order.status }}">
+                                    {{ order.get_status_display }}
+                                </button>
+                                <ul class="dropdown-menu" aria-labelledby="statusDropdown{{ order.id }}">
+                                    {% for value, label in status_choices %}
+                                        {% if value != order.status %}
+                                            <li>
+                                                <a class="dropdown-item status-option" href="#" 
+                                                   data-status="{{ value }}" 
+                                                   data-order-number="{{ order.order_number }}">
+                                                    {{ label }}
+                                                </a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'store:staff_order_detail' order_number=order.order_number %}" 
+                                   class="btn btn-outline-primary" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'store:staff_order_update' order_number=order.order_number %}" 
+                                   class="btn btn-outline-secondary" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4">No orders found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% if is_paginated %}
+        <div class="card-footer">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% url_replace request 'page' page_obj.previous_page_number %}" aria-label="Previous">
+                                <span aria-hidden="true">&laquo;</span>
+                            </a>
+                        </li>
+                    {% else %}
+                        <li class="page-item disabled">
+                            <span class="page-link" aria-hidden="true">&laquo;</span>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% else %}
+                            {% if num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% url_replace request 'page' num %}">{{ num }}</a>
+                                        Previous
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Previous</span>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                            {{ num }}
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}{% if date_from %}&date_from={{ date_from }}{% endif %}{% if date_to %}&date_to={{ date_to }}{% endif %}">
+                                        Next
+                                    </a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">Next</span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                    <h5>No orders found</h5>
+                    <p class="text-muted">Try adjusting your filters to find what you're looking for.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize date pickers
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add date picker functionality if needed
+        const dateFrom = document.getElementById('date_from');
+        const dateTo = document.getElementById('date_to');
+        
+        if (dateFrom && dateTo) {
+            dateFrom.addEventListener('change', function() {
+                if (this.value) {
+                    dateTo.min = this.value;
+                }
+            });
+            
+            dateTo.addEventListener('change', function() {
+                if (this.value && dateFrom.value > this.value) {
+                    dateFrom.value = this.value;
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

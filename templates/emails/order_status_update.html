@@ -1,0 +1,43 @@
+{% extends "emails/base_email.html" %}
+
+{% block content %}
+<tr>
+    <td style="padding: 40px 30px 40px 30px;">
+        <table role="presentation" border="0" cellspacing="0" cellpadding="0" width="100%">
+            <tr>
+                <td style="padding: 0 0 20px 0;">
+                    <h1 style="margin: 0; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 24px; color: #333333;">
+                        Order #{{ order.order_number }} - {{ status_display }}
+                    </h1>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 0 0 20px 0; color: #555555; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 16px; line-height: 24px;">
+                    <p>Hello{% if order.user and order.user.first_name %} {{ order.user.first_name }}{% endif %},</p>
+                    <p>Your order #{{ order.order_number }} has been updated to: <strong>{{ status_display }}</strong></p>
+                    
+                    {% if order.tracking_number %}
+                    <p>Tracking Number: <strong>{{ order.tracking_number }}</strong></p>
+                    {% if order.tracking_url %}
+                    <p>Track your package: <a href="{{ order.tracking_url }}" style="color: #4CAF50; text-decoration: none;">Click here to track</a></p>
+                    {% endif %}
+                    {% endif %}
+                    
+                    <p style="margin: 30px 0 0 0;">
+                        <a href="{{ protocol }}://{{ site_domain }}{% url 'store:order_detail' order_number=order.order_number %}" 
+                           class="btn" style="background: #4CAF50; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block; font-weight: 500;">
+                            View Order Details
+                        </a>
+                    </p>
+                </td>
+            </tr>
+            <tr>
+                <td style="padding: 30px 0 0 0; border-top: 1px solid #eeeeee; color: #777777; font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 14px; line-height: 20px;">
+                    <p>Thank you for shopping with {{ site_name }}!</p>
+                    <p>If you have any questions about your order, please reply to this email or contact our support team.</p>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
+{% endblock %}

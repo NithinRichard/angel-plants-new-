@@ -1,0 +1,90 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}Payment Failed - Angel's Plants{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card text-center">
+                <div class="card-body py-5">
+                    <div class="text-danger mb-4">
+                        <i class="fas fa-times-circle fa-5x"></i>
+                    </div>
+                    <h2 class="mb-3">Payment Failed</h2>
+                    <p class="lead">We're sorry, but there was an issue processing your payment.</p>
+                    
+                    {% if error_message %}
+                    <div class="alert alert-danger text-start">
+                        <p class="mb-0"><strong>Error:</strong> {{ error_message }}</p>
+                        {% if error_code %}
+                        <p class="mb-0 mt-2"><strong>Error Code:</strong> {{ error_code }}</p>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="order-details bg-light p-4 rounded my-4 text-start">
+                        <h5 class="mb-3">Order Details</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-2">
+                                <p class="mb-1"><strong>Order Number:</strong></p>
+                                <p>{{ order.order_number }}</p>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <p class="mb-1"><strong>Date:</strong></p>
+                                <p>{{ order.created_at|date:"F d, Y" }}</p>
+                            </div>
+                            <div class="col-md-6 mb-2">
+                                <p class="mb-1"><strong>Amount:</strong></p>
+                                <p>₹{{ order.total_amount }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-warning">
+                        <p class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Your order has been created but is pending payment. You can retry the payment or contact our support team for assistance.
+                        </p>
+                    </div>
+                    
+                    <div class="d-flex justify-content-center gap-3 mt-4">
+                        <a href="{% url 'store:payment' order.id %}" class="btn btn-primary">
+                            <i class="fas fa-credit-card me-2"></i>Retry Payment
+                        </a>
+                        <a href="{% url 'store:order_detail' order.id %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-box-open me-2"></i>View Order
+                        </a>
+                        <a href="{% url 'store:contact' %}" class="btn btn-outline-danger">
+                            <i class="fas fa-headset me-2"></i>Contact Support
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h5 class="mb-3">Need Help?</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <div class="p-3 bg-light rounded h-100">
+                                <h6><i class="fas fa-phone-alt me-2 text-primary"></i> Call Us</h6>
+                                <p class="mb-0">+91 1234567890</p>
+                                <small class="text-muted">Available 9 AM - 7 PM, Mon-Sat</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="p-3 bg-light rounded h-100">
+                                <h6><i class="fas fa-envelope me-2 text-primary"></i> Email Us</h6>
+                                <p class="mb-0">support@angelsplants.com</p>
+                                <small class="text-muted">We'll respond within 24 hours</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

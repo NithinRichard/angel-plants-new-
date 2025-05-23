@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="text-center mb-5">
+                <h1 class="mb-3">Terms & Conditions</h1>
+                <p class="text-muted">Last updated: {{ last_updated }}</p>
+            </div>
+            
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-body p-4 p-lg-5">
+                    <div class="terms-content">
+                        {% for section in sections %}
+                            <div class="mb-4">
+                                <h2 class="h4 mb-3">{{ section.title }}</h2>
+                                <p class="text-muted">{{ section.content }}</p>
+                            </div>
+                            {% if not forloop.last %}<hr class="my-4">{% endif %}
+                        {% endfor %}
+                    </div>
+                    
+                    <div class="alert alert-light mt-5" role="alert">
+                        <p class="mb-0">
+                            <i class="fas fa-info-circle me-2"></i>
+                            If you have any questions about these terms, please contact us at 
+                            <a href="mailto:info@angelsplants.com" class="text-decoration-none">info@angelsplants.com</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="text-center mt-4">
+                <p class="text-muted mb-0">
+                    &copy; {{ current_year }} Angel's Plant Shop. All rights reserved.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .terms-content {
+        line-height: 1.8;
+        color: #4a4a4a;
+    }
+    
+    .terms-content h2 {
+        color: #2c3e50;
+        font-weight: 600;
+    }
+    
+    .terms-content p {
+        margin-bottom: 1.2rem;
+    }
+    
+    .card {
+        border-radius: 0.75rem;
+    }
+    
+    hr {
+        opacity: 0.1;
+    }
+</style>
+{% endblock %}

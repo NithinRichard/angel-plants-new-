@@ -1,0 +1,84 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.python-version
+
+# Environment variables
+.env
+.env.*
+!.env.example
+.env.local
+.env.development
+.env.test
+.env.production
+
+# Sensitive files
+update_env.py
+*.pem
+*.key
+*.p12
+*.crt
+*.cert
+
+# Database
+*.sqlite3
+*.sqlite
+*.db
+
+# Logs
+*.log
+logs/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Static files
+/staticfiles/
+staticfiles/
+media/
+/media/
+/media/y
+
+# Vercel
+.vercel/
+.vercel/update_env.py
+
+# Local development
+.DS_Store
+*.local
+
+# Debug
+.pytest_cache/
+.mypy_cache/

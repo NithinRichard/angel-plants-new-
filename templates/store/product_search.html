@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <!-- Filters Sidebar -->
+        <div class="col-lg-3 mb-4">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">Filters</h5>
+                </div>
+                <div class="card-body">
+                    <form id="search-filters" method="get" action="{% url 'product_search' %}">
+                        <input type="hidden" name="q" value="{{ query }}">
+                        
+                        <!-- Category Filter -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">Categories</h6>
+                            <select class="form-select form-select-sm" name="category">
+                                <option value="">All Categories</option>
+                                {% for cat in categories %}
+                                    <option value="{{ cat.slug }}" {% if selected_category == cat.slug %}selected{% endif %}>
+                                        {{ cat.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <!-- Price Range Filter -->
+                        <div class="mb-4">
+                            <h6 class="mb-3">Price Range</h6>
+                            <div class="row g-2">
+                                <div class="col-6">
+                                    <input type="number" class="form-control form-control-sm" name="min_price" 
+                                           placeholder="Min" value="{{ min_price|default:'' }}" min="0">
+                                </div>
+                                <div class="col-6">
+                                    <input type="number" class="form-control form-control-sm" name="max_price" 
+                                           placeholder="Max" value="{{ max_price|default:'' }}" min="0">
+                                </div>
+                            </div>
+                            <div class="form-range mt-2" id="priceRange"></div>
+                        </div>
+                        
+                        <!-- In Stock Filter -->
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="in_stock" value="true" 
+                                   id="inStockCheck" {% if in_stock %}checked{% endif %}>
+                            <label class="form-check-label" for="inStockCheck">
+                                In Stock Only
+                            </label>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-primary btn-sm w-100">Apply Filters</button>
+                    </form>
+                </div>
+            </div>
+            
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="mb-3">Need Help?</h6>
+                    <p class="small text-muted">Can't find what you're looking for? Our team is here to help.</p>
+                    <a href="{% url 'contact' %}" class="btn btn-outline-primary btn-sm w-100">
+                        Contact Us
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Search Results -->
+        <div class="col-lg-9">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="h5 mb-0">
+                    {% if query %}
+                        {{ result_count }} result{% if result_count != 1 %}s{% endif %} for "{{ query }}"
+                    {% else %}
+                        All Products
+                    {% endif %}
+                </h2>
+                
+                <!-- Sort Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                            id="sortDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        Sort by: 
+                        {% if sort_by == 'relevance' %}Relevance{% endif %}
+                        {% if sort_by == 'price_asc' %}Price: Low to High{% endif %}
+                        {% if sort_by == 'price_desc' %}Price: High to Low{% endif %}
+                        {% if sort_by == 'name_asc' %}Name: A-Z{% endif %}
+                        {% if sort_by == 'name_desc' %}Name: Z-A{% endif %}
+                        {% if sort_by == 'newest' %}Newest{% endif %}
+                        {% if sort_by == 'bestselling' %}Bestselling{% endif %}
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="sortDropdown">
+                        <li><a class="dropdown-item {% if sort_by == 'relevance' %}active{% endif %}" 
+                              href="?{{ filter_url }}&sort_by=relevance">Relevance</a></li>
+                        <li><a class="dropdown-item {% if sort_by == 'newest' %}active{% endif %}" 
+                              href="?{{ filter_url }}&sort_by=newest">Newest</a></li>
+                        <li><a class="dropdown-item {% if sort_by == 'bestselling' %}active{% endif %}" 
+                              href="?{{ filter_url }}&sort_by=bestselling">Bestselling</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item {% if sort_by == 'price_asc' %}active{% endif %}" 
+                              href="?{{ filter_url }}&sort_by=price_asc">Price: Low to High</a></li>
+                        <li><a class="dropdown-item {% if sort_by == 'price_desc' %}active{% endif %}" 
+                              href="?{{ filter_url }}&sort_by=price_desc">Price: High to Low</a></li>
+                        <li><a class="dropdown-item {% if sort_by == 'name_asc' %}active{% endif %}" 
+                              href="?{{ filter_url }}&sort_by=name_asc">Name: A-Z</a></li>
+                        <li><a class="dropdown-item {% if sort_by == 'name_desc' %}active{% endif %}" 
+                              href="?{{ filter_url }}&sort_by=name_desc">Name: Z-A</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Search Results Grid -->
+            {% if products %}
+                <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+                    {% for product in products %}
+                        <div class="col">
+                            <div class="card h-100 border-0 shadow-sm product-card">
+                                <div class="position-relative">
+                                    <img src="{{ product.images.first.image.url|default:'/static/images/placeholder-product.jpg' }}" 
+                                         class="card-img-top" alt="{{ product.name }}">
+                                    {% if product.is_featured %}
+                                        <span class="position-absolute top-0 start-0 bg-warning text-dark px-2 py-1 m-2 small rounded">
+                                            Featured
+                                        </span>
+                                    {% endif %}
+                                    {% if product.stock_quantity == 0 %}
+                                        <span class="position-absolute top-0 end-0 bg-danger text-white px-2 py-1 m-2 small rounded">
+                                            Out of Stock
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="card-body">
+                                    <h5 class="card-title">
+                                        <a href="{{ product.get_absolute_url }}" class="text-decoration-none text-dark">
+                                            {{ product.name }}
+                                        </a>
+                                    </h5>
+                                    <p class="card-text text-muted small">
+                                        {{ product.short_description|truncatewords:15 }}
+                                    </p>
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span class="h5 mb-0 text-primary">${{ product.price }}</span>
+                                        <a href="{{ product.get_absolute_url }}" class="btn btn-sm btn-outline-primary">
+                                            View Details
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+                
+                <!-- Pagination -->
+                {% if is_paginated %}
+                    <nav aria-label="Search results pagination" class="mt-5">
+                        <ul class="pagination justify-content-center">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if query %}&q={{ query }}{% endif %}" aria-label="First">
+                                        <span aria-hidden="true">&laquo;&laquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if query %}&q={{ query }}{% endif %}" aria-label="Previous">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if query %}&q={{ query }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if query %}&q={{ query }}{% endif %}" aria-label="Next">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if query %}&q={{ query }}{% endif %}" aria-label="Last">
+                                        <span aria-hidden="true">&raquo;&raquo;</span>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+                
+            {% else %}
+                <div class="text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-search fa-4x text-muted mb-3"></i>
+                        <h3>No products found</h3>
+                        <p class="text-muted">
+                            We couldn't find any products matching your search criteria.
+                            Try adjusting your filters or search term.
+                        </p>
+                    </div>
+                    <a href="{% url 'product_search' %}" class="btn btn-primary">
+                        Clear all filters
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize price range slider
+    document.addEventListener('DOMContentLoaded', function() {
+        const priceRange = document.getElementById('priceRange');
+        const minPriceInput = document.querySelector('input[name="min_price"]');
+        const maxPriceInput = document.querySelector('input[name="max_price"]');
+        
+        // Set initial values
+        const minPrice = parseInt('{{ price_min|default:0 }}');
+        const maxPrice = parseInt('{{ price_max|default:1000 }}');
+        
+        // Initialize noUiSlider if the element exists
+        if (priceRange) {
+            noUiSlider.create(priceRange, {
+                start: [minPrice, maxPrice],
+                connect: true,
+                range: {
+                    'min': minPrice,
+                    'max': maxPrice
+                },
+                step: 1
+            });
+            
+            // Update input fields when slider changes
+            priceRange.noUiSlider.on('update', function(values, handle) {
+                const value = values[handle];
+                if (handle) {
+                    maxPriceInput.value = Math.round(value);
+                } else {
+                    minPriceInput.value = Math.round(value);
+                }
+            });
+            
+            // Update slider when input fields change
+            minPriceInput.addEventListener('change', function() {
+                priceRange.noUiSlider.set([this.value, null]);
+            });
+            
+            maxPriceInput.addEventListener('change', function() {
+                priceRange.noUiSlider.set([null, this.value]);
+            });
+        }
+        
+        // Submit form when filters change
+        const filterForm = document.getElementById('search-filters');
+        const filterSelects = filterForm.querySelectorAll('select');
+        const filterCheckboxes = filterForm.querySelectorAll('input[type="checkbox"]');
+        
+        filterSelects.forEach(select => {
+            select.addEventListener('change', function() {
+                filterForm.submit();
+            });
+        });
+        
+        filterCheckboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                filterForm.submit();
+            });
+        });
+    });
+</script>
+{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.5.0/nouislider.min.css">
+<style>
+    .product-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .product-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 0.5rem 1.5rem rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .card-img-top {
+        height: 200px;
+        object-fit: cover;
+    }
+    
+    .noUi-connect {
+        background: var(--bs-primary);
+    }
+    
+    .noUi-handle {
+        border: 1px solid #dee2e6;
+        background: #fff;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+    
+    .noUi-handle:before,
+    .noUi-handle:after {
+        background: #ddd;
+    }
+    
+    .noUi-handle:hover:before,
+    .noUi-handle:hover:after {
+        background: #ccc;
+    }
+    
+    @media (max-width: 767.98px) {
+        .card-img-top {
+            height: 150px;
+        }
+    }
+</style>
+{% endblock %}

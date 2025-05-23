@@ -1,0 +1,60 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "angels_plants/wsgi.py",
+      "use": "@vercel/python",
+      "config": {
+        "maxLambdaSize": "50mb",
+        "pythonRuntime": "python3.9"
+      }
+    },
+    {
+      "src": "staticfiles/",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "media/",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/media/(.*)",
+      "dest": "/media/$1"
+    },
+    {
+      "src": "/admin",
+      "dest": "/angels_plants/wsgi.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/angels_plants/wsgi.py"
+    }
+  ],
+  "env": {
+    "DEBUG": "False",
+    "DJANGO_SETTINGS_MODULE": "angels_plants.settings",
+    "PYTHONPATH": "/var/task/angels_plants:/var/task",
+    "SUPABASE_URL": "${SUPABASE_URL}",
+    "SUPABASE_KEY": "${SUPABASE_KEY}",
+    "SUPABASE_DATABASE_URL": "${SUPABASE_DATABASE_URL}",
+    "POSTGRES_DB": "${POSTGRES_DATABASE}",
+    "POSTGRES_USER": "${POSTGRES_USERNAME}",
+    "POSTGRES_PASSWORD": "${POSTGRES_PASSWORD}",
+    "POSTGRES_HOST": "${POSTGRES_HOST}",
+    "POSTGRES_PORT": "${POSTGRES_PORT}",
+    "SECRET_KEY": "${DJANGO_SECRET_KEY}",
+    "ALLOWED_HOSTS": ".vercel.app,.now.sh"
+  },
+  "build": {
+    "env": {
+      "NODE_VERSION": "16.x"
+    }
+  },
+  "regions": ["bom1"]
+}

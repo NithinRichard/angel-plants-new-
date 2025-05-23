@@ -1,0 +1,182 @@
+{% extends 'store/base.html' %}
+{% load static %}
+
+{% block title %}My Wishlist - Angel's Plants{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <!-- Sidebar -->
+        <div class="col-md-3 mb-4">
+            {% include 'store/account_sidebar.html' %}
+        </div>
+
+        <!-- Main Content -->
+        <div class="col-md-9">
+            <div class="card">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">My Wishlist</h5>
+                    <a href="{% url 'store:product_list' %}" class="btn btn-light btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i> Continue Shopping
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if wishlist_items %}
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Product</th>
+                                        <th>Price</th>
+                                        <th>Stock Status</th>
+                                        <th class="text-end">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in wishlist_items %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <a href="{{ item.product.get_absolute_url }}" class="me-3">
+                                                    <img src="{{ item.product.image.url }}" 
+                                                         alt="{{ item.product.name }}" 
+                                                         class="img-fluid" 
+                                                         style="width: 80px; height: 80px; object-fit: cover;">
+                                                </a>
+                                                <div>
+                                                    <h6 class="mb-1">
+                                                        <a href="{{ item.product.get_absolute_url }}" class="text-decoration-none text-dark">
+                                                            {{ item.product.name }}
+                                                        </a>
+                                                    </h6>
+                                                    {% if item.product.category %}
+                                                        <p class="text-muted small mb-0">
+                                                            {{ item.product.category.name }}
+                                                        </p>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            {% if item.product.discount_price %}
+                                                <span class="text-danger">${{ item.product.discount_price|floatformat:2 }}</span>
+                                                <small class="text-muted text-decoration-line-through">${{ item.product.price|floatformat:2 }}</small>
+                                            {% else %}
+                                                ${{ item.product.price|floatformat:2 }}
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if item.product.stock > 0 %}
+                                                <span class="text-success">In Stock</span>
+                                            {% else %}
+                                                <span class="text-danger">Out of Stock</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-end">
+                                            <div class="btn-group" role="group">
+                                                {% if item.product.stock > 0 %}
+                                                    <form action="{% url 'store:add_to_cart' item.product.id %}" method="post" class="d-inline">
+                                                        {% csrf_token %}
+                                                        <input type="hidden" name="quantity" value="1">
+                                                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                                                            <i class="fas fa-shopping-cart me-1"></i> Add to Cart
+                                                        </button>
+                                                    </form>
+                                                {% else %}
+                                                    <button class="btn btn-outline-secondary btn-sm" disabled>
+                                                        <i class="fas fa-exclamation-circle me-1"></i> Out of Stock
+                                                    </button>
+                                                {% endif %}
+                                                <form action="{% url 'store:remove_from_wishlist' item.product.id %}" method="post" class="d-inline">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn btn-outline-danger btn-sm" title="Remove from wishlist">
+                                                        <i class="far fa-trash-alt"></i>
+                                                    </button>
+                                                </form>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Pagination -->
+                        {% if is_paginated %}
+                            <nav aria-label="Wishlist pagination" class="mt-4">
+                                <ul class="pagination justify-content-center">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page=1" aria-label="First">
+                                                <span aria-hidden="true">&laquo;&laquo;</span>
+                                            </a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                                                <span aria-hidden="true">&laquo;</span>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for num in page_obj.paginator.page_range %}
+                                        {% if page_obj.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                                                <span aria-hidden="true">&raquo;</span>
+                                            </a>
+                                        </li>
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                                                <span aria-hidden="true">&raquo;&raquo;</span>
+                                            </a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div class="mb-4">
+                                <i class="far fa-heart fa-4x text-muted"></i>
+                            </div>
+                            <h5>Your wishlist is empty</h5>
+                            <p class="text-muted">You haven't added any products to your wishlist yet.</p>
+                            <a href="{% url 'store:product_list' %}" class="btn btn-primary">
+                                <i class="fas fa-shopping-bag me-2"></i> Start Shopping
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .wishlist-actions .btn {
+        min-width: 120px;
+    }
+    .wishlist-item:hover {
+        background-color: #f8f9fa;
+    }
+    .product-img {
+        transition: transform 0.3s ease;
+    }
+    .product-img:hover {
+        transform: scale(1.05);
+    }
+</style>
+{% endblock %}
