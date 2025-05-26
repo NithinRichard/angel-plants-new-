@@ -170,15 +170,24 @@ elif os.environ.get('VERCEL'):
     }
 # Check if we're on Render
 elif os.environ.get('RENDER'):
-    # Direct PostgreSQL configuration for Render
+    # Direct connection string for Render PostgreSQL
+    import psycopg2
+    
+    # Build the connection string
+    db_conn_str = "postgresql://angel_plants_new_db_user:YigjIH5nafM55UYAx3TGoWFfZFK4PxvS@dpg-d0q432vdiees738nsqb0-a:5432/angel_plants_new_db"
+    
+    # Parse the connection string
+    db_params = psycopg2.extensions.parse_dsn(db_conn_str)
+    
+    # Configure Django database settings
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'angel_plants_new_db',
-            'USER': 'angel_plants_new_db_user',
-            'PASSWORD': 'YigjIH5nafM55UYAx3TGoWFfZFK4PxvS',
-            'HOST': 'dpg-d0q432vdiees738nsqb0-a',
-            'PORT': '5432',
+            'NAME': db_params.get('dbname'),
+            'USER': db_params.get('user'),
+            'PASSWORD': db_params.get('password'),
+            'HOST': db_params.get('host'),
+            'PORT': db_params.get('port'),
             'CONN_MAX_AGE': 600,  # Reuse connections for 10 minutes
             'OPTIONS': {
                 'sslmode': 'require',
