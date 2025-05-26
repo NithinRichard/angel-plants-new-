@@ -170,31 +170,29 @@ elif os.environ.get('VERCEL'):
     }
 # Check if we're on Render
 elif os.environ.get('RENDER'):
-    # Direct connection string for Render PostgreSQL
-    import psycopg2
-    
-    # Build the connection string
-    db_conn_str = "postgresql://angel_plants_new_db_user:YigjIH5nafM55UYAx3TGoWFfZFK4PxvS@dpg-d0q432vdiees738nsqb0-a:5432/angel_plants_new_db"
-    
-    # Parse the connection string
-    db_params = psycopg2.extensions.parse_dsn(db_conn_str)
-    
-    # Configure Django database settings
+    # Direct PostgreSQL configuration for Render
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': db_params.get('dbname'),
-            'USER': db_params.get('user'),
-            'PASSWORD': db_params.get('password'),
-            'HOST': db_params.get('host'),
-            'PORT': db_params.get('port'),
-            'CONN_MAX_AGE': 600,  # Reuse connections for 10 minutes
+            'NAME': 'angel_plants_new_db',
+            'USER': 'angel_plants_new_db_user',
+            'PASSWORD': 'YigjIH5nafM55UYAx3TGoWFfZFK4PxvS',
+            'HOST': 'dpg-d0q432vdiees738nsqb0-a',
+            'PORT': '5432',
             'OPTIONS': {
                 'sslmode': 'require',
                 'connect_timeout': 10,
             },
         }
     }
+    
+    # Print database configuration for debugging
+    print("\n=== Database Configuration ===")
+    print(f"Database: {DATABASES['default']['NAME']}")
+    print(f"User: {DATABASES['default']['USER']}")
+    print(f"Host: {DATABASES['default']['HOST']}")
+    print(f"Port: {DATABASES['default']['PORT']}")
+    print("=============================\n")
     
     # Print database connection info for debugging
     print("\n=== Database Configuration ===")
