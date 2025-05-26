@@ -13,10 +13,6 @@ services:
         value: "False"
       - key: DJANGO_SETTINGS_MODULE
         value: "angels_plants.settings"
-      - key: DATABASE_URL
-        fromDatabase:
-          name: angel-plants-db
-          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: WEB_CONCURRENCY
@@ -41,20 +37,12 @@ services:
     autoDeploy: true
     # Health check path
     healthCheckPath: "/"
-    # Plan selection - starter/standard/premium
+    # Plan selection - free/standard/plus/pro
     plan: free
     # Region - choose closest to your users
     region: oregon
-    # Build command output directory
-    buildOutputDirectory: ""
     # Python version
     pythonVersion: "3.9.0"
-    # Install command
-    installCommand: "pip install -r requirements-vercel.txt"
-    # Build command
-    buildCommand: "./build.sh"
-    # Start command
-    startCommand: "gunicorn angels_plants.wsgi:application"
     # Environment variables map
     envVarsMap: {}
 
@@ -63,33 +51,7 @@ databases:
   - name: angel-plants-db
     databaseName: angel_plants
     user: angel_plants_user
-    # Database plan - free/hobby/basic/pro/pro_plus
+    # Database plan - free/standard/plus/pro
     plan: free
     # Database region - should match web service region
     region: oregon
-    # Database version
-    version: "14"
-    # Database extensions to enable
-    extensions:
-      - pg_trgm
-      - uuid-ossp
-    # Database configuration
-    config:
-      # Enable connection pooling
-      pool:
-        enabled: true
-        maxConnections: 20
-        minConnections: 1
-        maxIdleTime: 300
-      # Enable automatic backups
-      backup:
-        enabled: true
-        retention: 7
-        schedule: "0 0 * * *"
-
-# Environment variables for all services
-envVars:
-  - key: NODE_ENV
-    value: production
-  - key: PYTHONUNBUFFERED
-    value: "1"
