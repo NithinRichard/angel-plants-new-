@@ -15,6 +15,9 @@ django-ckeditor==6.7.2
 django-ckeditor-5==0.2.10
 django-widget-tweaks==1.5.0
 django-model-utils==4.3.1
+
+# PDF Generation
+reportlab==4.1.0
 django-countries==7.6.1
 django-crispy-forms==2.4
 django-filter==25.1

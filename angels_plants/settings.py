@@ -168,6 +168,23 @@ elif os.environ.get('VERCEL'):
             'CONN_MAX_AGE': 300,  # Reuse connections for 5 minutes
         }
     }
+# Check if we're on Render
+elif os.environ.get('RENDER'):
+    # PostgreSQL configuration for Render
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': 'angel_plants_new_db',
+            'USER': 'angel_plants_new_db_user',
+            'PASSWORD': 'YigjIH5nafM55UYAx3TGoWFfZFK4PxvS',
+            'HOST': 'dpg-d0q432vdiees738nsqb0-a',
+            'PORT': '5432',
+            'CONN_MAX_AGE': 300,  # Reuse connections for 5 minutes
+            'OPTIONS': {
+                'sslmode': 'require',
+            },
+        }
+    }
 elif os.environ.get('DB_ENGINE') == 'mysql':
     # MySQL configuration
     DATABASES = {

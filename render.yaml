@@ -5,6 +5,8 @@ services:
     buildCommand: "./build.sh"
     startCommand: "gunicorn angels_plants.wsgi:application"
     envVars:
+      - key: RENDER
+        value: "true"
       - key: PYTHON_VERSION
         value: "3.9.0"
       - key: PYTHONUNBUFFERED
@@ -22,7 +24,6 @@ services:
       - key: ALLOWED_HOSTS
         value: ".onrender.com"
       # Add your other environment variables here
-      # These should be set in the Render dashboard
       - key: RAZORPAY_KEY_ID
         sync: false
       - key: RAZORPAY_KEY_SECRET
@@ -33,6 +34,18 @@ services:
         sync: false
       - key: CONTACT_EMAIL
         sync: false
+      - key: DB_ENGINE
+        value: "django.db.backends.postgresql"
+      - key: DB_NAME
+        value: "angel_plants_new_db"
+      - key: DB_USER
+        value: "angel_plants_new_db_user"
+      - key: DB_PASSWORD
+        value: "YigjIH5nafM55UYAx3TGoWFfZFK4PxvS"
+      - key: DB_HOST
+        value: "dpg-d0q432vdiees738nsqb0-a"
+      - key: DB_PORT
+        value: "5432"
     # Auto-deploy from GitHub
     autoDeploy: true
     # Health check path
@@ -49,9 +62,14 @@ services:
 # Database configuration
 databases:
   - name: angel-plants-db
-    databaseName: angel_plants
-    user: angel_plants_user
+    databaseName: angel_plants_new_db
+    user: angel_plants_new_db_user
+    password: YigjIH5nafM55UYAx3TGoWFfZFK4PxvS
+    host: dpg-d0q432vdiees738nsqb0-a
+    port: 5432
     # Database plan - free/standard/plus/pro
     plan: free
     # Database region - should match web service region
-    region: oregon
+    region: Singapore (Southeast Asia)
+    # Connection string for Django
+    connectionString: postgresql://angel_plants_new_db_user:YigjIH5nafM55UYAx3TGoWFfZFK4PxvS@dpg-d0q432vdiees738nsqb0-a:5432/angel_plants_new_db
