@@ -7,6 +7,12 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: "3.9.0"
+      - key: PYTHONUNBUFFERED
+        value: "True"
+      - key: DEBUG
+        value: "False"
+      - key: DJANGO_SETTINGS_MODULE
+        value: "angels_plants.settings"
       - key: DATABASE_URL
         fromDatabase:
           name: angel-plants-db
@@ -16,10 +22,73 @@ services:
       - key: WEB_CONCURRENCY
         value: 4
       - key: DISABLE_COLLECTSTATIC
-        value: "1"
+        value: "0"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      # Add your other environment variables here
+      - key: RAZORPAY_KEY_ID
+        value: "rzp_test_UkKiMPSmpMsQhe"
+      - key: RAZORPAY_KEY_SECRET
+        value: "DtX7LWT4BmdBBMmJr8a7zU2k"
+      - key: SENDGRID_API_KEY
+        value: "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"
+      - key: DEFAULT_FROM_EMAIL
+        value: "nithinrichard1@gmail.com"
+      - key: CONTACT_EMAIL
+        value: "nithinrichard1@gmail.com"
+    # Auto-deploy from GitHub
+    autoDeploy: true
+    # Health check path
+    healthCheckPath: "/"
+    # Plan selection - starter/standard/premium
+    plan: free
+    # Region - choose closest to your users
+    region: oregon
+    # Build command output directory
+    buildOutputDirectory: ""
+    # Python version
+    pythonVersion: "3.9.0"
+    # Install command
+    installCommand: "pip install -r requirements-vercel.txt"
+    # Build command
+    buildCommand: "./build.sh"
+    # Start command
+    startCommand: "gunicorn angels_plants.wsgi:application"
+    # Environment variables map
+    envVarsMap: {}
 
+# Database configuration
 databases:
   - name: angel-plants-db
     databaseName: angel_plants
     user: angel_plants_user
+    # Database plan - free/hobby/basic/pro/pro_plus
     plan: free
+    # Database region - should match web service region
+    region: oregon
+    # Database version
+    version: "14"
+    # Database extensions to enable
+    extensions:
+      - pg_trgm
+      - uuid-ossp
+    # Database configuration
+    config:
+      # Enable connection pooling
+      pool:
+        enabled: true
+        maxConnections: 20
+        minConnections: 1
+        maxIdleTime: 300
+      # Enable automatic backups
+      backup:
+        enabled: true
+        retention: 7
+        schedule: "0 0 * * *"
+
+# Environment variables for all services
+envVars:
+  - key: NODE_ENV
+    value: production
+  - key: PYTHONUNBUFFERED
+    value: "1"
