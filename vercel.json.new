@@ -2,12 +2,12 @@
   "version": 2,
   "builds": [
     {
-      "src": "vercel_wsgi.py",
+      "src": "angels_plants/wsgi.py",
       "use": "@vercel/python",
       "config": {
         "maxLambdaSize": "50mb",
         "pythonRuntime": "python3.9",
-        "installCommand": "bash vercel-build.sh"
+        "installCommand": "pip install --no-cache-dir -r vercel-requirements.txt"
       }
     },
     {
@@ -19,24 +19,34 @@
       "use": "@vercel/static"
     }
   ],
-  "rewrites": [
-    { "source": "/static/(.*)", "destination": "/static/$1" },
-    { "source": "/media/(.*)", "destination": "/media/$1" },
-    { "source": "/admin/(.*)", "destination": "/vercel_wsgi.py" },
-    { "source": "/(.*)", "destination": "/vercel_wsgi.py" }
+  "routes": [
+    {
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
+    },
+    {
+      "src": "/media/(.*)",
+      "dest": "/media/$1"
+    },
+    {
+      "src": "/admin",
+      "dest": "/angels_plants/wsgi.py"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/angels_plants/wsgi.py"
+    }
   ],
   "build": {
     "env": {
-      "PYTHON_VERSION": "3.9",
-      "PIP_ONLY_BINARY": ":all:",
-      "PIP_IGNORE_INSTALLED": "1"
+      "PYTHON_VERSION": "3.9"
     }
   },
   "env": {
     "PYTHONUNBUFFERED": "True",
     "DEBUG": "False",
     "DJANGO_SETTINGS_MODULE": "angels_plants.settings",
-    "PYTHONPATH": "/var/task",
+    "PYTHONPATH": "/var/task/angels_plants:/var/task",
     
     "SUPABASE_URL": "${SUPABASE_URL}",
     "SUPABASE_KEY": "${SUPABASE_KEY}",
@@ -52,10 +62,7 @@
     "RAZORPAY_KEY_ID": "${RAZORPAY_KEY_ID}",
     "RAZORPAY_KEY_SECRET": "${RAZORPAY_KEY_SECRET}",
     
-    "ALLOWED_HOSTS": ".vercel.app,.now.sh,localhost,127.0.0.1"
+    "ALLOWED_HOSTS": ".vercel.app,.now.sh"
   },
-  "regions": ["bom1"],
-  "public": true,
-  "cleanUrls": true,
-  "trailingSlash": false
+  "regions": ["bom1"]
 }

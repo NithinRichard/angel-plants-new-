@@ -293,9 +293,44 @@
                             description: 'Order #' + data.order_number,
                             order_id: data.razorpay.order_id,
                             handler: function(response) {
-                                // On successful payment, redirect to success page
-                                // The webhook will handle the payment verification
-                                window.location.href = data.redirect_url;
+                                // On successful payment, submit the form with payment details
+                                const paymentForm = document.createElement('form');
+                                paymentForm.method = 'POST';
+                                paymentForm.action = '{% url "store:payment_webhook" %}';
+                                
+                                const csrfInput = document.createElement('input');
+                                csrfInput.type = 'hidden';
+                                csrfInput.name = 'csrfmiddlewaretoken';
+                                csrfInput.value = '{{ csrf_token }}';
+                                
+                                const orderInput = document.createElement('input');
+                                orderInput.type = 'hidden';
+                                orderInput.name = 'order_id';
+                                orderInput.value = data.order_id;
+                                
+                                const paymentIdInput = document.createElement('input');
+                                paymentIdInput.type = 'hidden';
+                                paymentIdInput.name = 'razorpay_payment_id';
+                                paymentIdInput.value = response.razorpay_payment_id;
+                                
+                                const orderIdInput = document.createElement('input');
+                                orderIdInput.type = 'hidden';
+                                orderIdInput.name = 'razorpay_order_id';
+                                orderIdInput.value = response.razorpay_order_id;
+                                
+                                const signatureInput = document.createElement('input');
+                                signatureInput.type = 'hidden';
+                                signatureInput.name = 'razorpay_signature';
+                                signatureInput.value = response.razorpay_signature;
+                                
+                                paymentForm.appendChild(csrfInput);
+                                paymentForm.appendChild(orderInput);
+                                paymentForm.appendChild(paymentIdInput);
+                                paymentForm.appendChild(orderIdInput);
+                                paymentForm.appendChild(signatureInput);
+                                
+                                document.body.appendChild(paymentForm);
+                                paymentForm.submit();
                             },
                             prefill: {
                                 name: '{{ user.get_full_name|escapejs }}',
