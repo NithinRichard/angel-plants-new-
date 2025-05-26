@@ -31,3 +31,6 @@ django-on-vercel==2.0.0
 # Additional Dependencies for Vercel
 wheel==0.41.2
 setuptools==68.0.0
+
+# UI Components
+crispy-bootstrap5==2023.10
