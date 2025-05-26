@@ -1,0 +1,483 @@
+# Ignore everything
+*.*
+
+# Allow the following files and directories
+!api/
+!static/
+!media/
+!vercel.json
+!requirements-vercel.txt
+!vercel-build.sh
+
+# Allow all Python files in the project
+!*.py
+
+# Allow all template files
+!**/*.html
+!**/*.css
+!**/*.js
+!**/*.json
+
+# Allow all static files
+!**/static/**
+!**/media/**
+
+# Allow all Python package directories
+!**/__init__.py
+!**/migrations/**
+!**/templatetags/**
+!**/management/commands/**
+
+# Django specific
+!manage.py
+!asgi.py
+!wsgi.py
+!urls.py
+!settings.py
+!**/settings/**
+!**/apps.py
+!**/models.py
+!**/views.py
+!**/urls.py
+!**/admin.py
+!**/forms.py
+!**/templatetags/**
+
+# Allow all template directories
+!**/templates/**
+
+# Allow all locale directories
+!**/locale/**
+!**/locales/**
+
+# Allow all translation files
+!**/*.po
+!**/*.mo
+
+# Allow all media files
+!**/media/**
+
+# Allow all static files
+!**/static/**
+
+# Allow all Python package data
+!**/*.pth
+!**/*.so
+!**/*.dll
+
+# Allow all data files
+!**/*.json
+!**/*.yaml
+!**/*.yml
+!**/*.csv
+!**/*.txt
+!**/*.md
+
+# Allow all image files
+!**/*.png
+!**/*.jpg
+!**/*.jpeg
+!**/*.gif
+!**/*.svg
+!**/*.ico
+!**/*.webp
+
+# Allow all font files
+!**/*.woff
+!**/*.woff2
+!**/*.ttf
+!**/*.eot
+!**/*.otf
+
+# Allow all archive files
+!**/*.zip
+!**/*.tar.gz
+!**/*.tgz
+
+# Allow all binary files
+!**/*.bin
+!**/*.dat
+
+# Allow all configuration files
+!**/*.cfg
+!**/*.conf
+!**/*.ini
+
+# Allow all shell scripts
+!**/*.sh
+!**/*.bash
+
+# Allow all SQL files
+!**/*.sql
+!**/*.sqlite3
+
+# Allow all text files
+!**/*.txt
+!**/*.md
+!**/*.rst
+!**/*.markdown
+!**/*.mkd
+
+# Allow all documentation files
+!**/*.pdf
+!**/*.doc
+!**/*.docx
+!**/*.xls
+!**/*.xlsx
+!**/*.ppt
+!**/*.pptx
+
+# Allow all video files
+!**/*.mp4
+!**/*.webm
+!**/*.ogv
+!**/*.mov
+
+# Allow all audio files
+!**/*.mp3
+!**/*.wav
+!**/*.ogg
+!**/*.m4a
+
+# Allow all 3D model files
+!**/*.stl
+!**/*.obj
+!**/*.fbx
+
+# Allow all CAD files
+!**/*.dwg
+!**/*.dxf
+
+# Allow all font files
+!**/*.ttf
+!**/*.otf
+!**/*.woff
+!**/*.woff2
+!**/*.eot
+
+# Allow all archive files
+!**/*.zip
+!**/*.tar.gz
+!**/*.tgz
+!**/*.rar
+!**/*.7z
+
+# Allow all binary files
+!**/*.bin
+!**/*.dat
+!**/*.db
+
+# Allow all configuration files
+!**/*.cfg
+!**/*.conf
+!**/*.ini
+!**/*.yaml
+!**/*.yml
+
+# Allow all shell scripts
+!**/*.sh
+!**/*.bash
+!**/*.zsh
+!**/*.fish
+
+# Allow all SQL files
+!**/*.sql
+!**/*.sqlite3
+!**/*.sqlite
+!**/*.db
+
+# Allow all text files
+!**/*.txt
+!**/*.md
+!**/*.rst
+!**/*.markdown
+!**/*.mkd
+!**/*.textile
+
+# Allow all documentation files
+!**/*.pdf
+!**/*.doc
+!**/*.docx
+!**/*.xls
+!**/*.xlsx
+!**/*.ppt
+!**/*.pptx
+!**/*.odt
+!**/*.ods
+!**/*.odp
+
+# Allow all video files
+!**/*.mp4
+!**/*.webm
+!**/*.ogv
+!**/*.mov
+!**/*.avi
+!**/*.wmv
+!**/*.flv
+!**/*.mkv
+
+# Allow all audio files
+!**/*.mp3
+!**/*.wav
+!**/*.ogg
+!**/*.m4a
+!**/*.flac
+!**/*.aac
+!**/*.wma
+
+# Allow all 3D model files
+!**/*.stl
+!**/*.obj
+!**/*.fbx
+!**/*.dae
+!**/*.3ds
+!**/*.blend
+
+# Allow all CAD files
+!**/*.dwg
+!**/*.dxf
+!**/*.skp
+!**/*.step
+!**/*.stp
+
+# Allow all font files
+!**/*.ttf
+!**/*.otf
+!**/*.woff
+!**/*.woff2
+!**/*.eot
+!**/*.sfnt
+
+# Allow all archive files
+!**/*.zip
+!**/*.tar.gz
+!**/*.tgz
+!**/*.rar
+!**/*.7z
+!**/*.tar.bz2
+!**/*.tbz2
+
+# Allow all binary files
+!**/*.bin
+!**/*.dat
+!**/*.db
+!**/*.dump
+!**/*.sql.gz
+
+# Allow all configuration files
+!**/*.cfg
+!**/*.conf
+!**/*.ini
+!**/*.yaml
+!**/*.yml
+!**/*.toml
+!**/*.env
+
+# Allow all shell scripts
+!**/*.sh
+!**/*.bash
+!**/*.zsh
+!**/*.fish
+!**/*.ps1
+!**/*.cmd
+!**/*.bat
+
+# Allow all SQL files
+!**/*.sql
+!**/*.sqlite3
+!**/*.sqlite
+!**/*.db
+!**/*.dump
+!**/*.sql.gz
+
+# Allow all text files
+!**/*.txt
+!**/*.md
+!**/*.rst
+!**/*.markdown
+!**/*.mkd
+!**/*.textile
+!**/*.org
+!**/*.tex
+
+# Allow all documentation files
+!**/*.pdf
+!**/*.doc
+!**/*.docx
+!**/*.xls
+!**/*.xlsx
+!**/*.ppt
+!**/*.pptx
+!**/*.odt
+!**/*.ods
+!**/*.odp
+!**/*.epub
+!**/*.mobi
+!**/*.azw3
+
+# Allow all video files
+!**/*.mp4
+!**/*.webm
+!**/*.ogv
+!**/*.mov
+!**/*.avi
+!**/*.wmv
+!**/*.flv
+!**/*.mkv
+!**/*.m4v
+!**/*.3gp
+!**/*.3g2
+
+# Allow all audio files
+!**/*.mp3
+!**/*.wav
+!**/*.ogg
+!**/*.m4a
+!**/*.flac
+!**/*.aac
+!**/*.wma
+!**/*.aiff
+!**/*.aif
+!**/*.mid
+!**/*.midi
+
+# Allow all 3D model files
+!**/*.stl
+!**/*.obj
+!**/*.fbx
+!**/*.dae
+!**/*.3ds
+!**/*.blend
+!**/*.max
+!**/*.ma
+!**/*.mb
+!**/*.c4d
+
+# Allow all CAD files
+!**/*.dwg
+!**/*.dxf
+!**/*.skp
+!**/*.step
+!**/*.stp
+!**/*.iges
+!**/*.igs
+!**/*.stl
+!**/*.obj
+
+# Allow all font files
+!**/*.ttf
+!**/*.otf
+!**/*.woff
+!**/*.woff2
+!**/*.eot
+!**/*.sfnt
+!**/*.ttc
+!**/*.dfont
+!**/*.pfb
+
+# Allow all archive files
+!**/*.zip
+!**/*.tar.gz
+!**/*.tgz
+!**/*.rar
+!**/*.7z
+!**/*.tar.bz2
+!**/*.tbz2
+!**/*.tar.xz
+!**/*.txz
+!**/*.lzma
+
+# Allow all binary files
+!**/*.bin
+!**/*.dat
+!**/*.db
+!**/*.dump
+!**/*.sql.gz
+!**/*.pickle
+!**/*.pkl
+!**/*.npy
+!**/*.npz
+
+# Allow all configuration files
+!**/*.cfg
+!**/*.conf
+!**/*.ini
+!**/*.yaml
+!**/*.yml
+!**/*.toml
+!**/*.env
+!**/*.json
+!**/*.xml
+!**/*.plist
+
+# Allow all shell scripts
+!**/*.sh
+!**/*.bash
+!**/*.zsh
+!**/*.fish
+!**/*.ps1
+!**/*.cmd
+!**/*.bat
+!**/*.vbs
+!**/*.js
+!**/*.py
+
+# Allow all SQL files
+!**/*.sql
+!**/*.sqlite3
+!**/*.sqlite
+!**/*.db
+!**/*.dump
+!**/*.sql.gz
+!**/*.pgsql
+!**/*.mysql
+!**/*.mssql
+!**/*.oracle
+
+# Allow all text files
+!**/*.txt
+!**/*.md
+!**/*.rst
+!**/*.markdown
+!**/*.mkd
+!**/*.textile
+!**/*.org
+!**/*.tex
+!**/*.latex
+!**/*.bib
+!**/*.bst
+!**/*.cls
+!**/*.sty
+!**/*.dtx
+!**/*.ins
+!**/*.ltx
+!**/*.texi
+!**/*.texinfo
+!**/*.toc
+!**/*.lof
+!**/*.lot
+!**/*.bbl
+!**/*.blg
+!**/*.gls
+!**/*.glo
+!**/*.idx
+!**/*.ind
+!**/*.ilg
+!**/*.ist
+!**/*.acn
+!**/*.acr
+!**/*.glg
+!**/*.glsdefs
+!**/*.snm
+!**/*.nav
+!**/*.out
+!**/*.spl
+!**/*.synctex.gz
+!**/*.fdb_latexmk
+!**/*.fls
+!**/*.xdv
+!**/*.bcf
+!**/*.run.xml
+!**/*.synctex(busy)
+!**/*.synctex.gz(busy)
+!**/*.synctex.gz(\n... and 1 more
