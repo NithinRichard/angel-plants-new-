@@ -2,24 +2,37 @@
 # exit on error
 set -o errexit
 
+# Load environment variables
+if [ -f .env ]; then
+    export $(grep -v '^#' .env | xargs)
+fi
+
+# Update pip and install build dependencies
+echo "Upgrading pip and installing build dependencies..."
+python -m pip install --upgrade pip
+pip install wheel setuptools
+
+# Install system dependencies (for psycopg2)
+echo "Installing system dependencies..."
+apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    python3-dev \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 # Install Python dependencies
 echo "Installing Python dependencies..."
-pip install -r requirements.txt
+pip install -r requirements-vercel.txt
 
-# Install PostgreSQL client (required for psycopg2)
-echo "Installing PostgreSQL client..."
-sudo apt-get update && sudo apt-get install -y libpq-dev
-
-# Install build dependencies
-pip install --upgrade pip
+# Install additional required packages
 pip install gunicorn whitenoise
 
-# Install project dependencies
-pip install -r requirements.txt
+# Create necessary directories
+mkdir -p staticfiles
 
 # Collect static files
 echo "Collecting static files..."
-python manage.py collectstatic --noinput
+python manage.py collectstatic --noinput --clear
 
 # Run database migrations
 echo "Running database migrations..."

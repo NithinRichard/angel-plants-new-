@@ -16,21 +16,32 @@ django-countries==7.6.1
 django-crispy-forms==2.4
 django-filter==25.1
 
+# UI Components
+crispy-bootstrap5==2023.10
+
 # Image Processing
 Pillow==11.2.1
 
 # Cache
 redis==5.0.3
 
-# Production
-python-dotenv==1.0.1
+# Email
+sendgrid==6.11.0
 
 # Required for Vercel
 django-on-vercel==2.0.0
 
-# Additional Dependencies for Vercel
+# Build dependencies
 wheel==0.41.2
 setuptools==68.0.0
 
-# UI Components
-crispy-bootstrap5==2023.10
+# Payment processing
+razorpay==1.4.2
+
+# Security
+python-decouple==3.8
+django-environ==0.11.2
+
+# Additional utilities
+python-magic==0.4.27
+python-magic-bin==0.4.14; sys_platform == 'win32'
