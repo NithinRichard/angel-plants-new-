@@ -12,6 +12,7 @@ supabase==2.3.4
 
 # Django Extensions
 django-ckeditor==6.7.2
+django-ckeditor-5==0.2.10
 django-countries==7.6.1
 django-crispy-forms==2.4
 django-filter==25.1
