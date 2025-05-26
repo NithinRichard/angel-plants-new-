@@ -26,16 +26,17 @@ services:
       - key: ALLOWED_HOSTS
         value: ".onrender.com"
       # Add your other environment variables here
+      # These should be set in the Render dashboard
       - key: RAZORPAY_KEY_ID
-        value: "rzp_test_UkKiMPSmpMsQhe"
+        sync: false
       - key: RAZORPAY_KEY_SECRET
-        value: "DtX7LWT4BmdBBMmJr8a7zU2k"
+        sync: false
       - key: SENDGRID_API_KEY
-        value: "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"
+        sync: false
       - key: DEFAULT_FROM_EMAIL
-        value: "nithinrichard1@gmail.com"
+        sync: false
       - key: CONTACT_EMAIL
-        value: "nithinrichard1@gmail.com"
+        sync: false
     # Auto-deploy from GitHub
     autoDeploy: true
     # Health check path
