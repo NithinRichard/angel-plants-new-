@@ -170,24 +170,28 @@ elif os.environ.get('VERCEL'):
     }
 # Check if we're on Render
 elif os.environ.get('RENDER'):
-    # Direct PostgreSQL configuration for Render
+    # Use DATABASE_URL from environment variables
+    import dj_database_url
+    
+    # Get DATABASE_URL from environment
+    db_url = os.environ.get('DATABASE_URL')
+    if not db_url:
+        # Fallback to direct configuration if DATABASE_URL is not set
+        db_url = 'postgresql://angel_plants_new_db_user:YigjIH5nafM55UYAx3TGoWFfZFK4PxvS@dpg-d0q432vdiees738nsqb0-a:5432/angel_plants_new_db'
+    
+    # Configure database from URL
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': 'angel_plants_new_db',
-            'USER': 'angel_plants_new_db_user',
-            'PASSWORD': 'YigjIH5nafM55UYAx3TGoWFfZFK4PxvS',
-            'HOST': 'dpg-d0q432vdiees738nsqb0-a',
-            'PORT': '5432',
-            'OPTIONS': {
-                'sslmode': 'require',
-                'connect_timeout': 10,
-            },
-        }
+        'default': dj_database_url.parse(
+            db_url,
+            conn_max_age=600,
+            conn_health_checks=True,
+            ssl_require=True
+        )
     }
     
     # Print database configuration for debugging
     print("\n=== Database Configuration ===")
+    print(f"Using DATABASE_URL: {db_url}")
     print(f"Database: {DATABASES['default']['NAME']}")
     print(f"User: {DATABASES['default']['USER']}")
     print(f"Host: {DATABASES['default']['HOST']}")
