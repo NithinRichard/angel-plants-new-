@@ -5,6 +5,7 @@ services:
     buildCommand: "./build.sh"
     startCommand: "gunicorn angels_plants.wsgi:application"
     envVars:
+      # Core Django Settings
       - key: RENDER
         value: "true"
       - key: PYTHON_VERSION
@@ -23,17 +24,8 @@ services:
         value: "0"
       - key: ALLOWED_HOSTS
         value: ".onrender.com"
-      # Add your other environment variables here
-      - key: RAZORPAY_KEY_ID
-        sync: false
-      - key: RAZORPAY_KEY_SECRET
-        sync: false
-      - key: SENDGRID_API_KEY
-        sync: false
-      - key: DEFAULT_FROM_EMAIL
-        sync: false
-      - key: CONTACT_EMAIL
-        sync: false
+      
+      # Database Configuration
       - key: DB_ENGINE
         value: "django.db.backends.postgresql"
       - key: DB_NAME
@@ -46,6 +38,22 @@ services:
         value: "dpg-d0q432vdiees738nsqb0-a"
       - key: DB_PORT
         value: "5432"
+      - key: DB_SSLMODE
+        value: "require"
+      
+      # Razorpay Configuration
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      
+      # Email Configuration
+      - key: SENDGRID_API_KEY
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false
+      - key: CONTACT_EMAIL
+        sync: false
     # Auto-deploy from GitHub
     autoDeploy: true
     # Health check path
