@@ -20,15 +20,18 @@ print(f"User: {config.get('Database', 'USER')}")
 print("===========================\n")
 
 # Razorpay Configuration
-RAZORPAY_KEY_ID = config.get('Razorpay', 'KEY_ID') if config.has_option('Razorpay', 'KEY_ID') else ''
-RAZORPAY_KEY_SECRET = config.get('Razorpay', 'KEY_SECRET') if config.has_option('Razorpay', 'KEY_SECRET') else ''
-RAZORPAY_WEBHOOK_SECRET = config.get('Razorpay', 'WEBHOOK_SECRET') if config.has_option('Razorpay', 'WEBHOOK_SECRET') else ''
+def get_config(section, option, default=''):
+    return config.get(section, option) if config.has_option(section, option) else default
 
-# Verify required settings
-if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
-    print("ERROR: Razorpay API keys are not properly configured")
-    print(f"RAZORPAY_KEY_ID: {'Set' if RAZORPAY_KEY_ID else 'Not set'}")
-    print(f"RAZORPAY_KEY_SECRET: {'Set' if RAZORPAY_KEY_SECRET else 'Not set'}")
+RAZORPAY_KEY_ID = get_config('Razorpay', 'KEY_ID', '')
+RAZORPAY_KEY_SECRET = get_config('Razorpay', 'KEY_SECRET', '')
+RAZORPAY_WEBHOOK_SECRET = get_config('Razorpay', 'WEBHOOK_SECRET', '')
+
+# Print Razorpay config status for debugging
+print("\n=== Razorpay Configuration ===")
+print(f"RAZORPAY_KEY_ID: {'Set' if RAZORPAY_KEY_ID else 'Not set'}")
+print(f"RAZORPAY_KEY_SECRET: {'Set' if RAZORPAY_KEY_SECRET else 'Not set'}")
+print("==============================\n")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
