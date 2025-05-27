@@ -9,10 +9,6 @@ https://docs.djangoproject.com/en/4.2/howto/deployment/wsgi/
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'angels_plants.settings')
 

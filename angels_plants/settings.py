@@ -4,29 +4,25 @@ Django settings for angels_plants project.
 
 import os
 from pathlib import Path
-from dotenv import load_dotenv
+import configparser
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Load environment variables
-env_path = os.path.join(BASE_DIR, '.env')
-print(f"Loading .env from: {env_path}")
-load_dotenv(env_path)
+# Load configuration from config.ini
+config = configparser.ConfigParser()
+config.read(BASE_DIR / 'config.ini')
 
-# Debug: Print all environment variables
-print("\n=== Environment Variables ===")
-for key in ['RAZORPAY_KEY_ID', 'RAZORPAY_KEY_SECRET', 'DATABASE_URL']:
-    value = os.getenv(key)
-    if value:
-        print(f"{key}: {'*' * 8}{value[-4:] if key != 'DATABASE_URL' else ''}")
-    else:
-        print(f"{key}: NOT FOUND")
+# Print configuration for debugging
+print("\n=== Configuration Loaded ===")
+print(f"Database: {config.get('Database', 'NAME')}")
+print(f"User: {config.get('Database', 'USER')}")
 print("===========================\n")
 
 # Razorpay Configuration
-RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID')
-RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET')
+RAZORPAY_KEY_ID = config.get('Razorpay', 'KEY_ID') if config.has_option('Razorpay', 'KEY_ID') else ''
+RAZORPAY_KEY_SECRET = config.get('Razorpay', 'KEY_SECRET') if config.has_option('Razorpay', 'KEY_SECRET') else ''
+RAZORPAY_WEBHOOK_SECRET = config.get('Razorpay', 'WEBHOOK_SECRET') if config.has_option('Razorpay', 'WEBHOOK_SECRET') else ''
 
 # Verify required settings
 if not RAZORPAY_KEY_ID or not RAZORPAY_KEY_SECRET:
@@ -135,45 +131,32 @@ TEMPLATES = [
 WSGI_APPLICATION = 'angels_plants.wsgi.application'
 
 # Database Configuration
-# Using SQLite for local development
+def get_config(section, option, default=''):
+    return config.get(section, option) if config.has_option(section, option) else default
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': get_config('Database', 'ENGINE', 'django.db.backends.sqlite3'),
+        'NAME': get_config('Database', 'NAME', os.path.join(BASE_DIR, 'db.sqlite3')),
+        'USER': get_config('Database', 'USER', ''),
+        'PASSWORD': get_config('Database', 'PASSWORD', ''),
+        'HOST': get_config('Database', 'HOST', ''),
+        'PORT': get_config('Database', 'PORT', ''),
+        'OPTIONS': {
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'charset': 'utf8mb4',
+        },
     }
 }
 
-# Only override with PostgreSQL if explicitly requested via environment
-if os.environ.get('USE_POSTGRES'):
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('POSTGRES_DB', 'angel_plants'),
-            'USER': os.getenv('POSTGRES_USER', 'postgres'),
-            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres'),
-            'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
-            'PORT': os.getenv('POSTGRES_PORT', '5432'),
-        }
-    }
-    print("\n=== Using PostgreSQL Database ===\n")
-elif os.environ.get('DB_ENGINE') == 'mysql':
-    # MySQL configuration
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.getenv('DB_NAME', 'angel_plants'),
-            'USER': os.getenv('DB_USER', 'root'),
-            'PASSWORD': os.getenv('DB_PASSWORD', ''),
-            'HOST': os.getenv('DB_HOST', 'localhost'),
-            'PORT': os.getenv('DB_PORT', '3306'),
-            'OPTIONS': {
-                'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-                'charset': 'utf8mb4',
-                'connect_timeout': 10,
-            },
-            'CONN_MAX_AGE': 300,  # Reuse connections for 5 minutes
-        }
-    }
+# Print database info for debugging
+print("\n=== Database Configuration ===")
+print(f"Database: {get_config('Database', 'NAME')}")
+print(f"User: {get_config('Database', 'USER')}")
+password = get_config('Database', 'PASSWORD')
+print(f"Password: {'*' * len(password) if password else 'None'}")
+print(f"Host: {get_config('Database', 'HOST')}")
+print("============================\n")
 
 # Cache settings
 if DEBUG:
@@ -318,11 +301,14 @@ LOGOUT_REDIRECT_URL = 'store:product_list'
 LOGIN_URL = 'login'
 
 # Email settings
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # For development
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@angelsplants.com')
-
-# Contact Information
-CONTACT_EMAIL = os.getenv('CONTACT_EMAIL', 'nithinrichard1@gmail.com')
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = config.get('Email', 'DEFAULT_FROM_EMAIL')
+EMAIL_HOST_PASSWORD = config.get('Email', 'EMAIL_HOST_PASSWORD') if config.has_option('Email', 'EMAIL_HOST_PASSWORD') else ''
+DEFAULT_FROM_EMAIL = config.get('Email', 'DEFAULT_FROM_EMAIL')
+CONTACT_EMAIL = config.get('Email', 'CONTACT_EMAIL') if config.has_option('Email', 'CONTACT_EMAIL') else 'nithinrichard1@gmail.com'
 CONTACT_PHONE = '+91 9848666666'
 BUSINESS_ADDRESS = 'Puthenthope Trivandrum Kerala India 695586'
 BUSINESS_HOURS = [

@@ -7,10 +7,6 @@ from django.conf import settings
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ImproperlyConfigured
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -27,7 +23,6 @@ client = None
 
 try:
     logger.info("Initializing Razorpay client...")
-    
     # Get keys from Django settings
     razorpay_key_id = getattr(settings, 'RAZORPAY_KEY_ID', None)
     razorpay_key_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', None)

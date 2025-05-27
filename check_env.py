@@ -1,15 +1,19 @@
-import os
+import configparser
 from pathlib import Path
-from dotenv import load_dotenv
 
-# Load environment variables
+# Load configuration
 BASE_DIR = Path(__file__).resolve().parent
-env_path = BASE_DIR / '.env'
-print(f"Loading .env file from: {env_path}")
-load_dotenv(env_path)
+config_path = BASE_DIR / 'config.ini'
+print(f"Loading configuration from: {config_path}")
 
-# Print environment variables
-print("\n=== Environment Variables ===")
-print(f"RAZORPAY_KEY_ID: {os.getenv('RAZORPAY_KEY_ID', 'NOT FOUND')}")
-print(f"RAZORPAY_KEY_SECRET: {'*' * 8 + os.getenv('RAZORPAY_KEY_SECRET', 'NOT FOUND')[-4:] if os.getenv('RAZORPAY_KEY_SECRET') else 'NOT FOUND'}")
-print("===========================")
+config = configparser.ConfigParser()
+config.read(config_path)
+
+# Print configuration
+print("\n=== Configuration ===")
+print(f"Database: {config.get('Database', 'NAME', fallback='NOT FOUND')}")
+print(f"Database User: {config.get('Database', 'USER', fallback='NOT FOUND')}")
+print(f"Razorpay Key ID: {config.get('Razorpay', 'KEY_ID', fallback='NOT FOUND')}")
+razorpay_secret = config.get('Razorpay', 'KEY_SECRET', fallback=None)
+print(f"Razorpay Key Secret: {'*' * 8 + (razorpay_secret[-4:] if razorpay_secret else '') if razorpay_secret else 'NOT FOUND'}")
+print("====================")

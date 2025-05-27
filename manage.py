@@ -3,10 +3,6 @@
 import os
 import sys
 from pathlib import Path
-from dotenv import load_dotenv
-
-# Load environment variables before Django is initialized
-load_dotenv()
 
 def main():
     """Run administrative tasks."""
