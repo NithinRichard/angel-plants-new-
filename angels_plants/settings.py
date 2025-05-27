@@ -135,7 +135,7 @@ TEMPLATES = [
 WSGI_APPLICATION = 'angels_plants.wsgi.application'
 
 # Database Configuration
-# Default to SQLite for development
+# Using SQLite for local development
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -143,68 +143,19 @@ DATABASES = {
     }
 }
 
-# Check if we're using Supabase
-if os.environ.get('SUPABASE_URL'):
-    # Parse database URL from Supabase
-    import dj_database_url
-    DATABASES = {
-        'default': dj_database_url.config(
-            default=os.environ.get('SUPABASE_DATABASE_URL'),
-            conn_max_age=600,
-            conn_health_checks=True,
-        )
-    }
-# Check if we're in production (e.g., on Vercel)
-elif os.environ.get('VERCEL'):
-    # PostgreSQL configuration for Vercel
+# Only override with PostgreSQL if explicitly requested via environment
+if os.environ.get('USE_POSTGRES'):
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('POSTGRES_DB'),
-            'USER': os.getenv('POSTGRES_USER'),
-            'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-            'HOST': os.getenv('POSTGRES_HOST'),
+            'NAME': os.getenv('POSTGRES_DB', 'angel_plants'),
+            'USER': os.getenv('POSTGRES_USER', 'postgres'),
+            'PASSWORD': os.getenv('POSTGRES_PASSWORD', 'postgres'),
+            'HOST': os.getenv('POSTGRES_HOST', 'localhost'),
             'PORT': os.getenv('POSTGRES_PORT', '5432'),
-            'CONN_MAX_AGE': 300,  # Reuse connections for 5 minutes
         }
     }
-# Check if we're on Render
-elif os.environ.get('RENDER'):
-    # Use DATABASE_URL from environment variables
-    import dj_database_url
-    
-    # Get DATABASE_URL from environment
-    db_url = os.environ.get('DATABASE_URL')
-    if not db_url:
-        # Fallback to direct configuration if DATABASE_URL is not set
-        db_url = 'postgresql://angel_plants_new_db_user:YigjIH5nafM55UYAx3TGoWFfZFK4PxvS@dpg-d0q432vdiees738nsqb0-a:5432/angel_plants_new_db'
-    
-    # Configure database from URL
-    DATABASES = {
-        'default': dj_database_url.parse(
-            db_url,
-            conn_max_age=600,
-            conn_health_checks=True,
-            ssl_require=True
-        )
-    }
-    
-    # Print database configuration for debugging
-    print("\n=== Database Configuration ===")
-    print(f"Using DATABASE_URL: {db_url}")
-    print(f"Database: {DATABASES['default']['NAME']}")
-    print(f"User: {DATABASES['default']['USER']}")
-    print(f"Host: {DATABASES['default']['HOST']}")
-    print(f"Port: {DATABASES['default']['PORT']}")
-    print("=============================\n")
-    
-    # Print database connection info for debugging
-    print("\n=== Database Configuration ===")
-    print(f"Database: {DATABASES['default']['NAME']}")
-    print(f"User: {DATABASES['default']['USER']}")
-    print(f"Host: {DATABASES['default']['HOST']}")
-    print(f"Port: {DATABASES['default']['PORT']}")
-    print("=============================\n")
+    print("\n=== Using PostgreSQL Database ===\n")
 elif os.environ.get('DB_ENGINE') == 'mysql':
     # MySQL configuration
     DATABASES = {
