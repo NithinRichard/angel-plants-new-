@@ -221,32 +221,23 @@ if not DEBUG:
     # CSRF trusted origins - update with your production domain
     CSRF_TRUSTED_ORIGINS = ['https://yourdomain.com', 'https://www.yourdomain.com']
     
-    # Logging for production
+    # Basic logging configuration
     LOGGING = {
         'version': 1,
         'disable_existing_loggers': False,
         'handlers': {
-            'file': {
-                'level': 'ERROR',
-                'class': 'logging.FileHandler',
-                'filename': os.path.join(BASE_DIR, 'logs/django_errors.log'),
-            },
-            'razorpay_file': {
-                'level': 'INFO',
-                'class': 'logging.FileHandler',
-                'filename': os.path.join(BASE_DIR, 'logs/razorpay.log'),
+            'console': {
+                'class': 'logging.StreamHandler',
             },
         },
         'loggers': {
             'django': {
-                'handlers': ['file'],
-                'level': 'ERROR',
-                'propagate': True,
+                'handlers': ['console'],
+                'level': 'INFO',
             },
             'payment': {
-                'handlers': ['razorpay_file'],
+                'handlers': ['console'],
                 'level': 'INFO',
-                'propagate': True,
             },
         },
     }
