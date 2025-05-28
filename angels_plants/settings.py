@@ -5,6 +5,10 @@ Django settings for angels_plants project.
 import os
 from pathlib import Path
 import configparser
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -27,9 +31,10 @@ def get_config(section, option, default=''):
             return config.get(s, option) if config.has_option(s, option) else default
     return default
 
-RAZORPAY_KEY_ID = get_config('Razorpay', 'KEY_ID', '')
-RAZORPAY_KEY_SECRET = get_config('Razorpay', 'KEY_SECRET', '')
-RAZORPAY_WEBHOOK_SECRET = get_config('Razorpay', 'WEBHOOK_SECRET', '')
+# Try to get from environment variables first, fall back to config.ini
+RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', get_config('Razorpay', 'KEY_ID', ''))
+RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', get_config('Razorpay', 'KEY_SECRET', ''))
+RAZORPAY_WEBHOOK_SECRET = os.getenv('RAZORPAY_WEBHOOK_SECRET', get_config('Razorpay', 'WEBHOOK_SECRET', ''))
 
 print(f"RAZORPAY_KEY_ID: {RAZORPAY_KEY_ID}")
 print(f"RAZORPAY_KEY_SECRET: {RAZORPAY_KEY_SECRET}")

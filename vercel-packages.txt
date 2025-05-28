@@ -11,3 +11,4 @@ django-crispy-forms==2.4
 django-filter==25.1
 Pillow==11.2.1
 redis==5.0.3
+python-dotenv==1.0.1
