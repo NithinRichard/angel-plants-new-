@@ -23,7 +23,13 @@ def payment_home(request):
     """
     Root view for the payment app that lists all available endpoints
     """
-    base_url = request.build_absolute_uri('/').rstrip('/')
+    # Ensure base_url ends with a single slash
+    base_url = request.build_absolute_uri('/')
+    if not base_url.endswith('/'):
+        base_url += '/'
+    
+    # Remove any double slashes that might occur
+    base_url = base_url.replace('//', '/').replace(':/', '://', 1)
     
     endpoints = {
         'create_order': {
