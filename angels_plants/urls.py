@@ -1,18 +1,41 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.conf import settings
 from django.conf.urls.static import static
+from django.views.generic import TemplateView
+from django.views.decorators.csrf import requires_csrf_token
+from django.template import loader
 
-# Test view
+# Simple test view
 def test_view(request):
     return HttpResponse("Test view is working!")
 
-# Catch-all for debugging
-def catch_all(request, path=''):
-    return HttpResponse(f"Path requested: {path}")
+# Better error handling for catch-all
+@requires_csrf_token
+def custom_page_not_found(request, exception=None, template_name='404.html'):
+    return JsonResponse({
+        'status': 'error',
+        'message': 'Page not found',
+        'path': request.path
+    }, status=404)
+
+# Simple home view
+def home_view(request):
+    return JsonResponse({
+        'status': 'success',
+        'message': 'Welcome to Angel Plants API',
+        'endpoints': {
+            'admin': '/admin/',
+            'test': '/test/',
+            'payment': '/payment/'
+        }
+    })
 
 urlpatterns = [
+    # Home page
+    path('', home_view, name='home'),
+    
     # Test URL
     path('test/', test_view, name='test'),
     
@@ -20,16 +43,24 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     
     # Store app
-    path('', include('store.urls', namespace='store')),
+    path('store/', include('store.urls', namespace='store')),
     
     # Payment app
     path('payment/', include('payment.urls', namespace='payment')),
-    
-    # Catch-all for debugging (keep this last)
-    path('<path:path>', catch_all),
 ]
+
+# Custom error handlers
+handler404 = 'angels_plants.urls.custom_page_not_found'
+handler500 = 'angels_plants.urls.custom_page_not_found'
 
 # Serve media files in development
 if settings.DEBUG:
     from django.conf.urls.static import static
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_URL)
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    
+    # Debug toolbar
+    if 'debug_toolbar' in settings.INSTALLED_APPS:
+        import debug_toolbar
+        urlpatterns = [
+            path('__debug__/', include(debug_toolbar.urls)),
+        ] + urlpatterns
