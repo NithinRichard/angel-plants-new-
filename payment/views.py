@@ -23,9 +23,6 @@ def payment_home(request):
     """
     Root view for the payment app that lists all available endpoints
     """
-    from django.shortcuts import render
-    from datetime import datetime
-    
     # Ensure base_url ends with a single slash
     base_url = request.build_absolute_uri('/')
     if not base_url.endswith('/'):
@@ -70,13 +67,29 @@ def payment_home(request):
             'documentation': 'https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/'
         })
     
-    # Render HTML template
-    return render(request, 'payment/api_docs.html', {
-        'base_url': base_url,
-        'endpoints': endpoints,
-        'documentation': 'https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/',
-        'now': datetime.now()
-    })
+    # Debug: Print template directories
+    from django.template.loader import get_template
+    from django.template import engines
+    
+    try:
+        # Render HTML template
+        return render(request, 'payment/api_docs.html', {
+            'base_url': base_url,
+            'endpoints': endpoints,
+            'documentation': 'https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/',
+            'now': datetime.now()
+        })
+    except Exception as e:
+        # If template rendering fails, return JSON with error
+        import traceback
+        logger.error(f"Error rendering template: {str(e)}\n{traceback.format_exc()}")
+        return JsonResponse({
+            'status': 'error',
+            'message': 'Error rendering template',
+            'error': str(e),
+            'template_dirs': [str(d) for d in engines['django'].engine.dirs],
+            'installed_apps': settings.INSTALLED_APPS
+        }, status=500)
 
 def generate_unique_receipt():
     """Generate a unique receipt ID for Razorpay"""

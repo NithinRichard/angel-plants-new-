@@ -97,14 +97,25 @@ PAYMENT_SUCCESS_URL = 'payment:payment_success'
 PAYMENT_FAILURE_URL = 'payment:payment_failed'
 
 # Application definition
+# Application definition
 INSTALLED_APPS = [
+    # Django built-in apps
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Your apps here
+    'django.contrib.humanize',
+    
+    # Third-party apps
+    'crispy_forms',
+    'crispy_bootstrap5',
+    'django_ckeditor_5',
+    'widget_tweaks',
+    
+    # Local apps
+    'store',
     'payment',
 ]
 
@@ -165,23 +176,6 @@ CURRENCY_SYMBOL = '₹'  # Indian Rupee symbol
 ORDER_PREFIX = 'ORD'
 ORDER_ID_LENGTH = 8  # Length of the random part of the order ID
 
-# Application definition
-INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'django.contrib.humanize',
-    'store',
-    'payment',
-    'crispy_forms',
-    'crispy_bootstrap5',
-    'django_ckeditor_5',
-    'widget_tweaks',
-]
-
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
@@ -199,8 +193,6 @@ TEMPLATES = [
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
             os.path.join(BASE_DIR, 'templates'),
-            os.path.join(BASE_DIR, 'store', 'templates'),
-            os.path.join(BASE_DIR, 'payment', 'templates'),
         ],
         'APP_DIRS': True,  # Enable app_dirs to find templates in app directories
         'OPTIONS': {
@@ -213,6 +205,9 @@ TEMPLATES = [
                 'store.context_processors.cart',
                 'store.context_processors.wishlist_count',
                 'store.context_processors.contact_info',
+            ],
+            'builtins': [
+                'django.templatetags.static',
             ],
         },
     },
