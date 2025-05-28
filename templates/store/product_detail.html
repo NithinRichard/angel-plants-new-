@@ -129,7 +129,7 @@
                         </form>
                     {% endif %}
                 {% else %}
-                    <a href="{% url 'store:login' %}?next={{ request.path }}" class="btn btn-outline-secondary" title="Login to add to wishlist">
+                    <a href="{% url 'accounts:login' %}?next={{ request.path }}" class="btn btn-outline-secondary" title="Login to add to wishlist">
                         <i class="far fa-heart"></i>
                     </a>
                 {% endif %}

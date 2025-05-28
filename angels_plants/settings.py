@@ -163,7 +163,7 @@ os.makedirs(STATIC_ROOT, exist_ok=True)
 os.makedirs(MEDIA_ROOT, exist_ok=True)
 
 # URL to use if the authentication system requires a user to log in.
-LOGIN_URL = '/accounts/login/'
+LOGIN_URL = 'accounts:login'
 
 # Default URL to redirect to after a user logs in.
 LOGIN_REDIRECT_URL = '/accounts/'

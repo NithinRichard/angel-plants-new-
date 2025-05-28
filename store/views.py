@@ -388,7 +388,7 @@ class StaffDashboardView(LoginRequiredMixin, UserPassesTestMixin, TemplateView):
     Dashboard view for staff members with store statistics and recent activities.
     """
     template_name = 'store/staff_dashboard.html'
-    login_url = 'login'
+    login_url = 'accounts:login'
     
     def test_func(self):
         """Ensure only staff members can access this view."""
@@ -620,7 +620,7 @@ class OrderHistoryView(LoginRequiredMixin, ListView):
     template_name = 'store/order_history.html'
     context_object_name = 'orders'
     paginate_by = 10
-    login_url = 'login'
+    login_url = 'accounts:login'
     redirect_field_name = 'next'
     
     def get_queryset(self):
@@ -857,7 +857,7 @@ class RegisterView(CreateView):
     model = User
     form_class = UserCreationForm
     template_name = 'registration/register.html'
-    success_url = reverse_lazy('store:login')
+    success_url = reverse_lazy('accounts:login')
 
     def dispatch(self, request, *args, **kwargs):
         if request.user.is_authenticated:
