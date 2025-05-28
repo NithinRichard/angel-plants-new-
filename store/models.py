@@ -1482,8 +1482,3 @@ class BlogPost(models.Model):
         # Remove from wishlist after adding to cart
         self.delete()
         return cart_item
-
-<<<<<<< HEAD
-
-=======
->>>>>>> f90e828 (Update authentication system and prepare for production deployment)
