@@ -20,7 +20,7 @@ SECRET_KEY = 'django-insecure-your-secret-key-here'  # Change this in production
 DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
 # Security settings
-ALLOWED_HOSTS = ['yourusername.pythonanywhere.com', 'www.yourdomain.com']
+ALLOWED_HOSTS = ['nithinrichard.pythonanywhere.com', 'www.angel-plants.com', 'localhost', '127.0.0.1']
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
 SECURE_SSL_REDIRECT = not DEBUG
