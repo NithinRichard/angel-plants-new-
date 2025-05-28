@@ -21,17 +21,33 @@ print("===========================\n")
 
 # Razorpay Configuration
 def get_config(section, option, default=''):
-    return config.get(section, option) if config.has_option(section, option) else default
+    # Make section lookup case-insensitive
+    for s in config.sections():
+        if s.lower() == section.lower():
+            return config.get(s, option) if config.has_option(s, option) else default
+    return default
 
 RAZORPAY_KEY_ID = get_config('Razorpay', 'KEY_ID', '')
 RAZORPAY_KEY_SECRET = get_config('Razorpay', 'KEY_SECRET', '')
 RAZORPAY_WEBHOOK_SECRET = get_config('Razorpay', 'WEBHOOK_SECRET', '')
+
+print(f"RAZORPAY_KEY_ID: {RAZORPAY_KEY_ID}")
+print(f"RAZORPAY_KEY_SECRET: {RAZORPAY_KEY_SECRET}")
 
 # Print Razorpay config status for debugging
 print("\n=== Razorpay Configuration ===")
 print(f"RAZORPAY_KEY_ID: {'Set' if RAZORPAY_KEY_ID else 'Not set'}")
 print(f"RAZORPAY_KEY_SECRET: {'Set' if RAZORPAY_KEY_SECRET else 'Not set'}")
 print("==============================\n")
+
+# Temporary test code - can be removed after verification
+print("\n=== Razorpay Configuration Test ===")
+print(f"RAZORPAY_KEY_ID type: {type(RAZORPAY_KEY_ID)}")
+print(f"RAZORPAY_KEY_ID length: {len(RAZORPAY_KEY_ID) if RAZORPAY_KEY_ID else 0}")
+print(f"RAZORPAY_KEY_ID value starts with: {RAZORPAY_KEY_ID[:8] if RAZORPAY_KEY_ID else 'N/A'}")
+print(f"RAZORPAY_KEY_SECRET type: {type(RAZORPAY_KEY_SECRET)}")
+print(f"RAZORPAY_KEY_SECRET length: {len(RAZORPAY_KEY_SECRET) if RAZORPAY_KEY_SECRET else 0}")
+print("===============================\n")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent

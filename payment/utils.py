@@ -23,15 +23,28 @@ client = None
 
 try:
     logger.info("Initializing Razorpay client...")
+    
     # Get keys from Django settings
     razorpay_key_id = getattr(settings, 'RAZORPAY_KEY_ID', None)
     razorpay_key_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', None)
     
     # Debug logging
-    logger.debug(f"RAZORPAY_KEY_ID from settings: {razorpay_key_id[:8] if razorpay_key_id else 'NOT FOUND'}")
+    key_id_display = f"{razorpay_key_id[:8]}..." if razorpay_key_id and len(razorpay_key_id) > 8 else str(razorpay_key_id)
+    logger.debug(f"RAZORPAY_KEY_ID from settings: {key_id_display}")
     
+    # Validate keys
     if not razorpay_key_id or not razorpay_key_secret:
-        error_msg = "Razorpay API keys are not properly configured in settings.py"
+        error_msg = "RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set in settings"
+        logger.critical(error_msg)
+        raise ImproperlyConfigured(error_msg)
+        
+    if not isinstance(razorpay_key_id, str) or not razorpay_key_id.strip():
+        error_msg = "RAZORPAY_KEY_ID is empty or not a valid string"
+        logger.critical(error_msg)
+        raise ImproperlyConfigured(error_msg)
+        
+    if not isinstance(razorpay_key_secret, str) or not razorpay_key_secret.strip():
+        error_msg = "RAZORPAY_KEY_SECRET is empty or not a valid string"
         logger.critical(error_msg)
         raise ImproperlyConfigured(error_msg)
     
