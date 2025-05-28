@@ -19,6 +19,46 @@ import razorpay
 
 logger = logging.getLogger(__name__)
 
+def payment_home(request):
+    """
+    Root view for the payment app that lists all available endpoints
+    """
+    base_url = request.build_absolute_uri('/').rstrip('/')
+    
+    endpoints = {
+        'create_order': {
+            'url': f"{base_url}payment/create-order/",
+            'method': 'POST',
+            'description': 'Create a new Razorpay order',
+            'required_params': ['amount', 'currency', 'order_id']
+        },
+        'payment_success': {
+            'url': f"{base_url}payment/success/",
+            'method': 'GET',
+            'description': 'Handle successful payment return from Razorpay',
+            'query_params': ['payment_id', 'order_id', 'signature']
+        },
+        'payment_failed': {
+            'url': f"{base_url}payment/failed/",
+            'method': 'GET',
+            'description': 'Handle failed payment return from Razorpay',
+            'query_params': ['error_code', 'error_description', 'order_id']
+        },
+        'webhook': {
+            'url': f"{base_url}payment/webhook/",
+            'method': 'POST',
+            'description': 'Razorpay webhook for payment events',
+            'events': ['payment.captured', 'payment.failed', 'order.paid']
+        }
+    }
+    
+    return JsonResponse({
+        'status': 'success',
+        'message': 'Welcome to Angel Plants Payment API',
+        'endpoints': endpoints,
+        'documentation': 'https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/' 
+    })
+
 def generate_unique_receipt():
     """Generate a unique receipt ID for Razorpay"""
     return f"order_rcpt_{uuid.uuid4().hex[:16]}"

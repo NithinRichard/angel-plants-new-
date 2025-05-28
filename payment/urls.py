@@ -4,6 +4,9 @@ from . import views
 app_name = 'payment'
 
 urlpatterns = [
+    # Root view - Lists all available endpoints
+    path('', views.payment_home, name='payment_home'),
+    
     # Create Razorpay order
     path('create-order/', views.create_order, name='create_order'),
     
