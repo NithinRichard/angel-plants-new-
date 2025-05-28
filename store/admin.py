@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 from .models import (
     Category, Product, Order, OrderItem, 
-    Wishlist, Review, Coupon, Cart, CartItem,
+    Wishlist, Review, Cart, CartItem,
     Payment, BlogPost, BlogCategory, BlogTag,
     Variation, VariationOption, ProductVariation, Address
 )
@@ -72,7 +72,7 @@ class CartAdmin(admin.ModelAdmin):
     list_display = ['id', 'user', 'status', 'item_count', 'total', 'created_at', 'updated_at']
     list_filter = ['status', 'created_at', 'updated_at']
     search_fields = ['user__username', 'user__email']
-    list_select_related = ['user', 'coupon']
+    list_select_related = ['user']
     inlines = [CartItemInline]
     readonly_fields = ['created_at', 'updated_at']
     

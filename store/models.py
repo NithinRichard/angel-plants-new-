@@ -436,100 +436,6 @@ class ProductVariation(models.Model):
         return self.product.price + self.price_adjustment
 
 
-class Coupon(models.Model):
-    """
-    Model to store discount coupons that can be applied to orders.
-    """
-    DISCOUNT_TYPES = [
-        ('percentage', 'Percentage'),
-        ('fixed_amount', 'Fixed Amount'),
-        ('free_shipping', 'Free Shipping'),
-    ]
-    
-    code = models.CharField(_('coupon code'), max_length=50, unique=True)
-    description = models.TextField(_('description'), blank=True)
-    discount_type = models.CharField(
-        _('discount type'), 
-        max_length=20, 
-        choices=DISCOUNT_TYPES, 
-        default='percentage'
-    )
-    discount_value = models.DecimalField(
-        _('discount value'), 
-        max_digits=10, 
-        decimal_places=2,
-        help_text=_('Percentage or fixed amount based on discount type')
-    )
-    valid_from = models.DateTimeField(_('valid from'))
-    valid_to = models.DateTimeField(_('valid to'))
-    max_uses = models.PositiveIntegerField(
-        _('maximum uses'), 
-        default=0,
-        help_text=_('0 for unlimited uses')
-    )
-    used_count = models.PositiveIntegerField(_('times used'), default=0)
-    min_order_value = models.DecimalField(
-        _('minimum order value'), 
-        max_digits=10, 
-        decimal_places=2, 
-        default=0.00
-    )
-    is_active = models.BooleanField(_('is active'), default=True)
-    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
-    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
-    
-    class Meta:
-        verbose_name = _('coupon')
-        verbose_name_plural = _('coupons')
-        ordering = ['-created_at']
-    
-    def __str__(self):
-        return f"{self.code} ({self.get_discount_type_display()})"
-    
-    def is_valid(self, user=None, order_total=None):
-        """
-        Check if the coupon is valid for use.
-        """
-        now = timezone.now()
-        
-        if not self.is_active:
-            return False, _("This coupon is no longer active.")
-            
-        if now < self.valid_from:
-            return False, _("This coupon is not yet valid.")
-            
-        if now > self.valid_to:
-            return False, _("This coupon has expired.")
-            
-        if self.max_uses > 0 and self.used_count >= self.max_uses:
-            return False, _("This coupon has reached its maximum usage limit.")
-            
-        if order_total is not None and order_total < self.min_order_value:
-            return False, _("The order total is below the minimum required for this coupon.")
-        
-        return True, _("Valid coupon.")
-    
-    def apply_discount(self, amount):
-        """
-        Apply the coupon discount to the given amount.
-        Returns the discount amount and the new total.
-        """
-        if self.discount_type == 'percentage':
-            discount = (amount * self.discount_value) / 100
-        elif self.discount_type == 'fixed_amount':
-            discount = min(self.discount_value, amount)
-        elif self.discount_type == 'free_shipping':
-            # Free shipping is handled separately in the order model
-            return 0, amount
-        
-        return discount, amount - discount
-    
-    def increment_usage(self):
-        """Increment the usage count of this coupon."""
-        self.used_count = F('used_count') + 1
-        self.save(update_fields=['used_count', 'updated_at'])
-
-
 class Address(models.Model):
     """
     Model to store user addresses for shipping and billing.
@@ -785,25 +691,12 @@ class Cart(models.Model):
     
     @property
     def total(self):
-        """Calculate the total amount including any discounts."""
-        subtotal = self.subtotal
-        
-        # Apply coupon discount if available and valid
-        discount_amount = 0
-        if self.coupon and self.coupon.is_valid():
-            if self.coupon.discount_type == 'percentage':
-                discount_amount = (subtotal * self.coupon.discount_value) / 100
-            else:  # fixed_amount
-                discount_amount = min(self.coupon.discount_value, subtotal)
-        
-        return max(subtotal - discount_amount, 0)
-    
-
+        """Calculate the total amount."""
+        return self.subtotal
     
     def clear(self):
         """Remove all items from the cart."""
         self.items.all().delete()
-        self.coupon = None
         self.save()
     
 

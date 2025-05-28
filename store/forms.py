@@ -8,12 +8,11 @@ from django.contrib.auth import get_user_model
 
 from .models import (
     Product, Category, ProductImage, ProductTag, Order, OrderItem, 
-    OrderActivity, Address, Coupon, ProductVariation, Variation, VariationOption
+    OrderActivity, Address, ProductVariation, Variation, VariationOption, Profile
 )
 
 User = get_user_model()
 
-from .models import Profile
 
 class ProfileForm(forms.ModelForm):
     """Form for updating user profile information."""
@@ -294,22 +293,6 @@ class CheckoutForm(forms.Form):
         cleaned_data = super().clean()
         # Add any custom validation here
         return cleaned_data
-
-
-class CouponForm(forms.ModelForm):
-    class Meta:
-        model = Coupon
-        fields = ['code', 'discount_type', 'discount_value', 'valid_from', 'valid_to', 'max_uses', 'used_count', 'min_order_value', 'is_active']
-        widgets = {
-            'code': forms.TextInput(attrs={'class': 'form-control'}),
-            'discount_type': forms.Select(attrs={'class': 'form-select'}),
-            'discount_value': forms.NumberInput(attrs={'class': 'form-control'}),
-            'valid_from': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
-            'valid_to': forms.DateTimeInput(attrs={'class': 'form-control', 'type': 'datetime-local'}),
-            'max_uses': forms.NumberInput(attrs={'class': 'form-control'}),
-            'min_order_value': forms.NumberInput(attrs={'class': 'form-control'}),
-            'is_active': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
-        }
 
 
 class ProductVariationForm(forms.ModelForm):

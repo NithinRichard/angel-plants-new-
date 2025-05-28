@@ -38,7 +38,7 @@ from django.contrib.postgres.search import SearchVector, SearchQuery, SearchRank
 from .filters import ProductFilter
 from .forms import (
     ContactForm, ProductForm, ProductImageForm, ProductTagForm, 
-    CheckoutForm, ReviewForm, AddressForm, CouponForm, 
+    CheckoutForm, ReviewForm, AddressForm,
     ProductVariationForm, VariationForm, VariationOptionForm, OrderForm
 )
 from .models import (
