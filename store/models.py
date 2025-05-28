@@ -670,22 +670,24 @@ class Cart(models.Model):
     def item_count(self):
         """Return the number of items in the cart."""
         return self.items.aggregate(
-            total=Coalesce(Sum('quantity'), 0, output_field=DecimalField())
+            total=models.Sum('quantity', default=0)
         )['total']
     
     @property
     def total_quantity(self):
         """Return the total quantity of items in the cart."""
-        return self.item_count
+        return self.items.aggregate(
+            total=models.Sum('quantity', default=0)
+        )['total']
     
     @property
     def subtotal(self):
         """Calculate the subtotal of all items in the cart."""
         return self.items.aggregate(
-            subtotal=Coalesce(
-                Sum(F('quantity') * F('price')),
-                0,
-                output_field=DecimalField()
+            subtotal=models.Sum(
+                models.F('quantity') * models.F('price'),
+                default=0,
+                output_field=models.DecimalField()
             )
         )['subtotal']
     
@@ -748,18 +750,16 @@ class CartItem(models.Model):
     
     def increase_quantity(self, quantity=1):
         """Increase the quantity of this item in the cart."""
-        self.quantity = F('quantity') + quantity
+        self.quantity += quantity
         self.save(update_fields=['quantity', 'updated_at'])
-        self.refresh_from_db()
     
     def decrease_quantity(self, quantity=1):
         """Decrease the quantity of this item in the cart."""
-        self.quantity = F('quantity') - quantity
+        self.quantity -= quantity
         if self.quantity <= 0:
             self.delete()
             return False
         self.save(update_fields=['quantity', 'updated_at'])
-        self.refresh_from_db()
         return True
     
     def save(self, *args, **kwargs):
