@@ -23,3 +23,5 @@ urlpatterns = [
     path('cart/coupon/apply/', api_apply_coupon, name='api_apply_coupon'),
     path('cart/coupon/remove/', api_remove_coupon, name='api_remove_coupon'),
 ]
+
+api_urlpatterns = urlpatterns

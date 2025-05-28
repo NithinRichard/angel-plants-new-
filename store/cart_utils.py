@@ -1,4 +1,4 @@
-""
+"""
 Utility functions for cart operations.
 """
 from decimal import Decimal

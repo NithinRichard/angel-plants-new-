@@ -9,6 +9,8 @@ from django.views.decorators.csrf import requires_csrf_token
 from django.template import loader
 from django.contrib.auth import views as auth_views
 from store.views import HomeView
+from django.views import View
+
 # Simple test view
 def test_view(request):
     return HttpResponse("Test view is working!")
