@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.urls import path, include
 from django.http import HttpResponse, JsonResponse
+from django.shortcuts import redirect
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView
@@ -45,11 +46,13 @@ urlpatterns = [
     # Store app
     path('store/', include('store.urls', namespace='store')),
     
-    # Payment app
+    # Payment app - Handle both /payment/ and /payments/
     path('payment/', include([
         path('', include('payment.urls', namespace='payment')),  # Handles /payment/
         path('pay/', include('payment.urls', namespace='payment_pay')),  # Handles /payment/pay/
     ])),
+    # Redirect /payments/ to /payment/
+    path('payments/', lambda request: redirect('payment:payment_home', permanent=True)),
 ]
 
 # Custom error handlers
