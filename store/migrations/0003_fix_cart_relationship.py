@@ -2,18 +2,6 @@
 
 from django.db import migrations, models
 
-def migrate_cart_relationship(apps, schema_editor):
-    """Migrate existing orders to have a cart relationship if they don't have one."""
-    Order = apps.get_model('store', 'Order')
-    Cart = apps.get_model('store', 'Cart')
-    
-    for order in Order.objects.all():
-        if not order.cart_id and order.user_id:
-            # Try to find or create a cart for this user
-            cart, created = Cart.objects.get_or_create(user_id=order.user_id)
-            order.cart = cart
-            order.save()
-
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -21,9 +9,7 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # Run data migration to populate cart relationships
-        migrations.RunPython(migrate_cart_relationship),
-        # Then alter the field to be a proper OneToOneField
+        # Alter the field to be a proper OneToOneField
         migrations.AlterField(
             model_name='order',
             name='cart',
