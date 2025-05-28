@@ -46,7 +46,10 @@ urlpatterns = [
     path('store/', include('store.urls', namespace='store')),
     
     # Payment app
-    path('payment/', include('payment.urls', namespace='payment')),
+    path('payment/', include([
+        path('', include('payment.urls', namespace='payment')),  # Handles /payment/
+        path('pay/', include('payment.urls', namespace='payment_pay')),  # Handles /payment/pay/
+    ])),
 ]
 
 # Custom error handlers
