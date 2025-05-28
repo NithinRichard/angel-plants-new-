@@ -5,6 +5,7 @@ from django.conf.urls.static import static
 from django.views.generic import RedirectView
 from django.urls import reverse_lazy
 from . import views
+from .api_urls import api_urlpatterns as api_urls
 
 # Import cart views from the cart_views module
 from .cart_views import add_to_cart, update_cart, remove_from_cart
@@ -15,14 +16,20 @@ from .payment_views import (
     CreateRazorpayOrderView,
     PaymentSuccessView,
     PaymentFailedView,
+    
     payment_webhook
 )
 
 app_name = 'store'
 
 urlpatterns = [
-    # Home and core pages
+    # API URLs
+    path('api/', include(api_urls)),
+    
+    # Home page - accessible at both / and /store/
     path('', views.HomeView.as_view(), name='home'),
+    
+    # Other core pages
     path('about/', views.AboutView.as_view(), name='about'),
     path('contact/', views.ContactView.as_view(), name='contact'),
     path('contact/thanks/', views.ContactThanksView.as_view(), name='contact_thanks'),
@@ -104,6 +111,7 @@ urlpatterns = [
     path('api/wishlist/toggle/<int:product_id>/', views.api_toggle_wishlist, name='api_toggle_wishlist'),
     path('api/cart/update/', views.api_update_cart, name='api_update_cart'),
     path('api/product/rate/', views.api_rate_product, name='api_rate_product'),
+    path('api/cart/', include(api_urls)),
     
     # Admin/Staff
     path('staff/dashboard/', views.StaffDashboardView.as_view(), name='staff_dashboard'),

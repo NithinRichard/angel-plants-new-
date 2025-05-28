@@ -8,6 +8,7 @@ from django.views.generic import TemplateView
 from django.views.decorators.csrf import requires_csrf_token
 from django.template import loader
 from django.contrib.auth import views as auth_views
+from store.views import HomeView
 
 # Simple test view
 def test_view(request):
@@ -24,11 +25,14 @@ def custom_page_not_found(request, exception=None, template_name='404.html'):
 
 # Redirect to store home
 def home_view(request):
-    return redirect('store:home')  # Redirect to store's home page
+    return redirect('store:home')  # This will redirect to the store's home page (root URL of store app)
 
 urlpatterns = [
-    # Home page - redirect to store
-    path('', home_view, name='home'),
+    # Home page - serve store's home view directly
+    path('', views.HomeView.as_view(), name='home'),
+    
+    # Store app - include with empty prefix
+    path('', include('store.urls')),
     
     # Auth URLs - Moved to accounts app
     path('accounts/', include('accounts.urls', namespace='accounts')),
