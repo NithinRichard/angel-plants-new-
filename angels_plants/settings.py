@@ -13,9 +13,17 @@ load_dotenv()
 # Debug: Print environment variables
 print("\n=== Environment Variables ===")
 print(f"DJANGO_SETTINGS_MODULE: {os.environ.get('DJANGO_SETTINGS_MODULE')}")
-print(f"RAZORPAY_KEY_ID from env: {'set' if os.environ.get('RAZORPAY_KEY_ID') else 'not set'}")
-print(f"RAZORPAY_KEY_SECRET from env: {'set' if os.environ.get('RAZORPAY_KEY_SECRET') else 'not set'}")
 print("===========================\n")
+
+# Direct Razorpay configuration for testing
+RAZORPAY_KEY_ID = "rzp_test_1LkgCKbXRICfuu"  # Test key - replace with your actual key in production
+RAZORPAY_KEY_SECRET = "1mXjBWGvebzUPNi3HcmmXX8I"  # Test secret - replace with your actual secret in production
+
+# Log the configuration
+print("\n=== Razorpay Configuration ===")
+print(f"RAZORPAY_KEY_ID: {'set' if RAZORPAY_KEY_ID else 'not set'}")
+print(f"RAZORPAY_KEY_SECRET: {'set' if RAZORPAY_KEY_SECRET else 'not set'}")
+print("============================\n")
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
