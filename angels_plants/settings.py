@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 # Debug: Print environment variables
 print("\n=== Environment Variables ===")
 print(f"DJANGO_SETTINGS_MODULE: {os.environ.get('DJANGO_SETTINGS_MODULE')}")
@@ -19,39 +22,15 @@ print("===========================\n")
 RAZORPAY_KEY_ID = "rzp_test_1LkgCKbXRICfuu"  # Test key - replace with your actual key in production
 RAZORPAY_KEY_SECRET = "1mXjBWGvebzUPNi3HcmmXX8I"  # Test secret - replace with your actual secret in production
 
-# Enhanced logging configuration
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-        },
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'debug.log'),
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console', 'file'],
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'payment': {
-            'handlers': ['console', 'file'],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-    },
-}
-
 # Log the configuration
 print("\n=== Application Configuration ===")
 print(f"BASE_DIR: {BASE_DIR}")
 print(f"DEBUG: {DEBUG}")
 print(f"ALLOWED_HOSTS: {ALLOWED_HOSTS}")
+print("\n=== Razorpay Configuration ===")
+print(f"RAZORPAY_KEY_ID: {'set' if RAZORPAY_KEY_ID else 'not set'}")
+print(f"RAZORPAY_KEY_SECRET: {'set' if RAZORPAY_KEY_SECRET else 'not set'}")
+print("============================\n")
 print("\n=== Razorpay Configuration ===")
 print(f"RAZORPAY_KEY_ID: {'set' if RAZORPAY_KEY_ID else 'not set'}")
 print(f"RAZORPAY_KEY_SECRET: {'set' if RAZORPAY_KEY_SECRET else 'not set'}")
@@ -116,6 +95,34 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 # Allow all hosts for now - update this in production
 ALLOWED_HOSTS = ['*', '.vercel.app', '.now.sh', 'localhost', '127.0.0.1', '.pythonanywhere.com']
+
+# Enhanced logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(BASE_DIR, 'debug.log'),
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'payment': {
+            'handlers': ['console', 'file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
 
 # Authentication
 LOGIN_URL = 'login'
