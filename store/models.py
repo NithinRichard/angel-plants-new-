@@ -750,14 +750,7 @@ class Cart(models.Model):
     )
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
-    coupon = models.ForeignKey(
-        'Coupon',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='carts',
-        verbose_name=_('coupon')
-    )
+
     
     class Meta:
         verbose_name = _('cart')
@@ -805,15 +798,7 @@ class Cart(models.Model):
         
         return max(subtotal - discount_amount, 0)
     
-    @property
-    def discount_amount(self):
-        """Calculate the total discount amount from coupons."""
-        subtotal = self.subtotal
-        if self.coupon and self.coupon.is_valid():
-            if self.coupon.discount_type == 'percentage':
-                return (subtotal * self.coupon.discount_value) / 100
-            return min(self.coupon.discount_value, subtotal)
-        return 0
+
     
     def clear(self):
         """Remove all items from the cart."""
@@ -821,29 +806,7 @@ class Cart(models.Model):
         self.coupon = None
         self.save()
     
-    def apply_coupon(self, coupon_code):
-        """Apply a coupon to the cart."""
-        try:
-            coupon = Coupon.objects.get(
-                code__iexact=coupon_code,
-                is_active=True,
-                valid_from__lte=timezone.now(),
-                valid_to__gte=timezone.now(),
-                used_count__lt=models.F('max_uses') | models.Q(max_uses=0)
-            )
-            self.coupon = coupon
-            self.save()
-            return True, 'Coupon applied successfully.'
-        except Coupon.DoesNotExist:
-            return False, 'Invalid or expired coupon code.'
-        except Exception as e:
-            return False, str(e)
-    
-    def remove_coupon(self):
-        """Remove the applied coupon from the cart."""
-        self.coupon = None
-        self.save()
-        return True
+
 
 
 class CartItem(models.Model):
