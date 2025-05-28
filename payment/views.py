@@ -23,6 +23,9 @@ def payment_home(request):
     """
     Root view for the payment app that lists all available endpoints
     """
+    from django.shortcuts import render
+    from datetime import datetime
+    
     # Ensure base_url ends with a single slash
     base_url = request.build_absolute_uri('/')
     if not base_url.endswith('/'):
@@ -58,11 +61,21 @@ def payment_home(request):
         }
     }
     
-    return JsonResponse({
-        'status': 'success',
-        'message': 'Welcome to Angel Plants Payment API',
+    # Check if the request wants JSON
+    if 'application/json' in request.META.get('HTTP_ACCEPT', ''):
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Welcome to Angel Plants Payment API',
+            'endpoints': endpoints,
+            'documentation': 'https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/'
+        })
+    
+    # Render HTML template
+    return render(request, 'payment/api_docs.html', {
+        'base_url': base_url,
         'endpoints': endpoints,
-        'documentation': 'https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/' 
+        'documentation': 'https://razorpay.com/docs/payments/payment-gateway/web-integration/standard/',
+        'now': datetime.now()
     })
 
 def generate_unique_receipt():
