@@ -5,12 +5,25 @@ Django settings for angels_plants project.
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+import configparser
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Load environment variables from .env file
 load_dotenv()
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'
-BASE_DIR = Path(__file__).resolve().parent.parent
+# Load database configuration from config.ini
+config = configparser.ConfigParser()
+config.read(os.path.join(BASE_DIR, 'config.ini'))
+
+# Get database settings from config.ini
+DB_ENGINE = config.get('Database', 'ENGINE')
+DB_NAME = config.get('Database', 'NAME')
+DB_USER = config.get('Database', 'USER')
+DB_PASSWORD = config.get('Database', 'PASSWORD')
+DB_HOST = config.get('Database', 'HOST')
+DB_PORT = config.get('Database', 'PORT')
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = 'django-insecure-your-secret-key-here'  # Change this in production
@@ -89,41 +102,20 @@ WSGI_APPLICATION = 'angels_plants.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 
-if 'RDS_DB_NAME' in os.environ:
-    # For AWS RDS
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            'NAME': os.environ['RDS_DB_NAME'],
-            'USER': os.environ['RDS_USERNAME'],
-            'PASSWORD': os.environ['RDS_PASSWORD'],
-            'HOST': os.environ['RDS_HOSTNAME'],
-            'PORT': os.environ['RDS_PORT'],
-        }
+# Database configuration using config.ini
+DATABASES = {
+    'default': {
+        'ENGINE': DB_ENGINE,
+        'NAME': DB_NAME,
+        'USER': DB_USER,
+        'PASSWORD': DB_PASSWORD,
+        'HOST': DB_HOST,
+        'PORT': DB_PORT,
+        'OPTIONS': {
+            'sql_mode': 'traditional',
+        },
     }
-elif 'DB_NAME' in os.environ:
-    # For PythonAnywhere MySQL
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.mysql',
-            'NAME': os.environ.get('DB_NAME'),
-            'USER': os.environ.get('DB_USER'),
-            'PASSWORD': os.environ.get('DB_PASSWORD'),
-            'HOST': os.environ.get('DB_HOST', 'localhost'),
-            'PORT': os.environ.get('DB_PORT', '3306'),
-            'OPTIONS': {
-                'sql_mode': 'traditional',
-            },
-        }
-    }
-else:
-    # Local SQLite database (for development)
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': os.path.join(BASE_DIR, 'db.sqlite3'),
-        }
-    }
+}
 
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
