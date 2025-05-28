@@ -1284,8 +1284,8 @@ def add_to_cart(request, product_id, quantity=1):
             cart=cart,
             product=product,
             defaults={
-                'quantity': 0,
-                'price': product.price  # Set initial price to current product price
+                'quantity': quantity,
+                'price': product.price
             }
         )
         
@@ -1293,13 +1293,10 @@ def add_to_cart(request, product_id, quantity=1):
         print(f"CartItem ID: {cart_item.id if cart_item else 'None'}, Created: {created}")
         print(f"Current quantity: {cart_item.quantity}, Adding: {quantity}")
         
-        # Increase quantity if not created now
+        # Update quantity
         if not created:
             cart_item.increase_quantity(quantity)
-        else:
-            cart_item.quantity = quantity
-            cart_item.price = product.price  # Ensure price is set for new items
-            cart_item.save()
+        cart_item.save()
         
         # Update cart totals
         cart.update_totals()

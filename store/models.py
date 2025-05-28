@@ -696,6 +696,10 @@ class Cart(models.Model):
         """Calculate the total amount."""
         return self.subtotal
     
+    def update_totals(self):
+        """Update the cart's totals based on its items."""
+        self.save()
+        
     def clear(self):
         """Remove all items from the cart."""
         self.items.all().delete()
