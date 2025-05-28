@@ -5,7 +5,7 @@ from django.utils.translation import gettext_lazy as _
 
 from .models import (
     Category, Product, Order, OrderItem, 
-    Wishlist, Review, Coupon,
+    Wishlist, Review, Coupon, Cart, CartItem,
     Payment, BlogPost, BlogCategory, BlogTag,
     Variation, VariationOption, ProductVariation, Address
 )
@@ -61,6 +61,38 @@ class OrderItemAdmin(admin.ModelAdmin):
     raw_id_fields = ['order', 'product']
     list_select_related = ['order', 'product']
 
+
+class CartItemInline(admin.TabularInline):
+    model = CartItem
+    raw_id_fields = ['product']
+    extra = 0
+
+
+class CartAdmin(admin.ModelAdmin):
+    list_display = ['id', 'user', 'status', 'item_count', 'total', 'created_at', 'updated_at']
+    list_filter = ['status', 'created_at', 'updated_at']
+    search_fields = ['user__username', 'user__email']
+    list_select_related = ['user', 'coupon']
+    inlines = [CartItemInline]
+    readonly_fields = ['created_at', 'updated_at']
+    
+    def item_count(self, obj):
+        return obj.item_count
+    item_count.short_description = 'Items'
+
+
+class CartItemAdmin(admin.ModelAdmin):
+    list_display = ['id', 'cart', 'product', 'quantity', 'price', 'total_price', 'created_at']
+    list_filter = ['created_at', 'updated_at']
+    search_fields = ['cart__id', 'product__name']
+    raw_id_fields = ['cart', 'product']
+    list_select_related = ['cart', 'product']
+    readonly_fields = ['created_at', 'updated_at']
+    
+    def total_price(self, obj):
+        return obj.total_price
+    total_price.short_description = 'Total'
+
 class WishlistAdmin(admin.ModelAdmin):
     list_display = ['id', 'get_username', 'product', 'quantity', 'is_public', 'created_at', 'updated_at']
     list_filter = [
@@ -101,6 +133,8 @@ admin.site.register(Category, CategoryAdmin)
 admin.site.register(Product, ProductAdmin)
 admin.site.register(Order, OrderAdmin)
 admin.site.register(OrderItem, OrderItemAdmin)
+admin.site.register(Cart, CartAdmin)
+admin.site.register(CartItem, CartItemAdmin)
 admin.site.register(Wishlist, WishlistAdmin)
 
 # Register models with the custom admin site
@@ -108,4 +142,6 @@ angel_plants_admin.register(Category, CategoryAdmin)
 angel_plants_admin.register(Product, ProductAdmin)
 angel_plants_admin.register(Order, OrderAdmin)
 angel_plants_admin.register(OrderItem, OrderItemAdmin)
+angel_plants_admin.register(Cart, CartAdmin)
+angel_plants_admin.register(CartItem, CartItemAdmin)
 angel_plants_admin.register(Wishlist, WishlistAdmin)

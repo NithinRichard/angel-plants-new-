@@ -2,46 +2,24 @@ from django.db import models
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import slugify
-from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator
+from django.core.validators import MinValueValidator, MaxValueValidator, RegexValidator, FileExtensionValidator
 from django.db.models import F, Q, Sum
 from django.core.exceptions import ValidationError
 from django.conf import settings
-from django.core.validators import FileExtensionValidator
 from django.dispatch import receiver
 from django_countries.fields import CountryField
 from model_utils import FieldTracker
 from ckeditor.fields import RichTextField
 from django.contrib.contenttypes.fields import GenericRelation
 from django.utils.html import strip_tags
-from django.db.models import Avg, Count, Sum, F, Q
-from django.db.models.signals import post_save, post_delete
+from django.db.models import Avg, Count, Sum, F, Q, DecimalField
+from django.db.models.functions import Coalesce
+from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
+from django.utils import timezone
 from PIL import Image
 
 User = get_user_model()
-
-# Signal to create Profile when User is created
-@receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    try:
-        profile = instance.profile
-        if created:
-            profile.save()
-        else:
-            profile.save()
-    except Profile.DoesNotExist:
-        Profile.objects.create(user=instance)
-
-# Create profiles for existing users
-try:
-    for user in User.objects.all():
-        try:
-            if not hasattr(user, 'profile'):
-                Profile.objects.create(user=user)
-        except Exception as e:
-            print(f"Error creating profile for user {user.username}: {str(e)}")
-except Exception as e:
-    print(f"Error processing existing users: {str(e)}")
 
 class Payment(models.Model):
     """
@@ -748,6 +726,194 @@ class ProductTag(models.Model):
         super().save(*args, **kwargs)
 
 
+class Cart(models.Model):
+    """
+    Model representing a shopping cart.
+    """
+    STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('abandoned', 'Abandoned'),
+        ('converted', 'Converted to Order'),
+    ]
+    
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='cart',
+        verbose_name=_('user')
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='active',
+        verbose_name=_('status')
+    )
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+    coupon = models.ForeignKey(
+        'Coupon',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='carts',
+        verbose_name=_('coupon')
+    )
+    
+    class Meta:
+        verbose_name = _('cart')
+        verbose_name_plural = _('carts')
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        return f"Cart for {self.user.email}"
+    
+    @property
+    def item_count(self):
+        """Return the number of items in the cart."""
+        return self.items.aggregate(
+            total=Coalesce(Sum('quantity'), 0, output_field=DecimalField())
+        )['total']
+    
+    @property
+    def total_quantity(self):
+        """Return the total quantity of items in the cart."""
+        return self.item_count
+    
+    @property
+    def subtotal(self):
+        """Calculate the subtotal of all items in the cart."""
+        return self.items.aggregate(
+            subtotal=Coalesce(
+                Sum(F('quantity') * F('price')),
+                0,
+                output_field=DecimalField()
+            )
+        )['subtotal']
+    
+    @property
+    def total(self):
+        """Calculate the total amount including any discounts."""
+        subtotal = self.subtotal
+        
+        # Apply coupon discount if available and valid
+        discount_amount = 0
+        if self.coupon and self.coupon.is_valid():
+            if self.coupon.discount_type == 'percentage':
+                discount_amount = (subtotal * self.coupon.discount_value) / 100
+            else:  # fixed_amount
+                discount_amount = min(self.coupon.discount_value, subtotal)
+        
+        return max(subtotal - discount_amount, 0)
+    
+    @property
+    def discount_amount(self):
+        """Calculate the total discount amount from coupons."""
+        subtotal = self.subtotal
+        if self.coupon and self.coupon.is_valid():
+            if self.coupon.discount_type == 'percentage':
+                return (subtotal * self.coupon.discount_value) / 100
+            return min(self.coupon.discount_value, subtotal)
+        return 0
+    
+    def clear(self):
+        """Remove all items from the cart."""
+        self.items.all().delete()
+        self.coupon = None
+        self.save()
+    
+    def apply_coupon(self, coupon_code):
+        """Apply a coupon to the cart."""
+        try:
+            coupon = Coupon.objects.get(
+                code__iexact=coupon_code,
+                is_active=True,
+                valid_from__lte=timezone.now(),
+                valid_to__gte=timezone.now(),
+                used_count__lt=models.F('max_uses') | models.Q(max_uses=0)
+            )
+            self.coupon = coupon
+            self.save()
+            return True, 'Coupon applied successfully.'
+        except Coupon.DoesNotExist:
+            return False, 'Invalid or expired coupon code.'
+        except Exception as e:
+            return False, str(e)
+    
+    def remove_coupon(self):
+        """Remove the applied coupon from the cart."""
+        self.coupon = None
+        self.save()
+        return True
+
+
+class CartItem(models.Model):
+    """
+    Model representing an item in a shopping cart.
+    """
+    cart = models.ForeignKey(
+        Cart,
+        on_delete=models.CASCADE,
+        related_name='items',
+        verbose_name=_('cart')
+    )
+    product = models.ForeignKey(
+        'Product',
+        on_delete=models.CASCADE,
+        related_name='cart_items',
+        verbose_name=_('product')
+    )
+    quantity = models.PositiveIntegerField(
+        _('quantity'),
+        default=1,
+        validators=[MinValueValidator(1)]
+    )
+    price = models.DecimalField(
+        _('price'),
+        max_digits=10,
+        decimal_places=2,
+        help_text=_('Price at time of adding to cart')
+    )
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('cart item')
+        verbose_name_plural = _('cart items')
+        ordering = ['-created_at']
+        unique_together = ['cart', 'product']
+    
+    def __str__(self):
+        return f"{self.quantity} x {self.product.name} in cart"
+    
+    @property
+    def total_price(self):
+        """Calculate the total price for this cart item."""
+        return self.quantity * self.price
+    
+    def increase_quantity(self, quantity=1):
+        """Increase the quantity of this item in the cart."""
+        self.quantity = F('quantity') + quantity
+        self.save(update_fields=['quantity', 'updated_at'])
+        self.refresh_from_db()
+    
+    def decrease_quantity(self, quantity=1):
+        """Decrease the quantity of this item in the cart."""
+        self.quantity = F('quantity') - quantity
+        if self.quantity <= 0:
+            self.delete()
+            return False
+        self.save(update_fields=['quantity', 'updated_at'])
+        self.refresh_from_db()
+        return True
+    
+    def save(self, *args, **kwargs):
+        """Save the cart item and update the cart's updated_at timestamp."""
+        if not self.pk:  # New item being added
+            self.price = self.product.price
+        super().save(*args, **kwargs)
+        self.cart.save()  # Update cart's updated_at
+
+
 class Order(models.Model):
     class Status(models.TextChoices):
         PENDING = 'pending', _('Pending')
@@ -1012,29 +1178,6 @@ class OrderActivity(models.Model):
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
-
-
-class OrderItem(models.Model):
-    order = models.ForeignKey(Order, related_name='items', on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, related_name='order_items', on_delete=models.CASCADE)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    quantity = models.PositiveIntegerField(default=1)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-        
-    def __str__(self):
-        return f"{self.quantity} x {self.product.name} (Order: {self.order.order_number})"
-
-    def get_cost(self):
-        return self.price * self.quantity
-
-    def update_price(self):
-        """Update item price to match current product price"""
-        self.price = self.product.price
-        self.save(update_fields=['price', 'updated_at'])
 
 
 class Cart(models.Model):
@@ -1339,3 +1482,8 @@ class BlogPost(models.Model):
         # Remove from wishlist after adding to cart
         self.delete()
         return cart_item
+
+<<<<<<< HEAD
+
+=======
+>>>>>>> f90e828 (Update authentication system and prepare for production deployment)

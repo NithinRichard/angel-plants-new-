@@ -7,6 +7,7 @@ from django.conf.urls.static import static
 from django.views.generic import TemplateView
 from django.views.decorators.csrf import requires_csrf_token
 from django.template import loader
+from django.contrib.auth import views as auth_views
 
 # Simple test view
 def test_view(request):
@@ -21,21 +22,16 @@ def custom_page_not_found(request, exception=None, template_name='404.html'):
         'path': request.path
     }, status=404)
 
-# Simple home view
+# Redirect to store home
 def home_view(request):
-    return JsonResponse({
-        'status': 'success',
-        'message': 'Welcome to Angel Plants API',
-        'endpoints': {
-            'admin': '/admin/',
-            'test': '/test/',
-            'payment': '/payment/'
-        }
-    })
+    return redirect('store:home')  # Redirect to store's home page
 
 urlpatterns = [
-    # Home page
+    # Home page - redirect to store
     path('', home_view, name='home'),
+    
+    # Auth URLs - Moved to accounts app
+    path('accounts/', include('accounts.urls', namespace='accounts')),
     
     # Test URL
     path('test/', test_view, name='test'),

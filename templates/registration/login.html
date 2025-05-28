@@ -31,11 +31,12 @@
                                    id="{{ form.password.id_for_label }}" required>
                         </div>
                         <div class="mb-3 form-check">
-                            <input type="checkbox" class="form-check-input" id="rememberMe">
+                            <input type="checkbox" class="form-check-input" id="rememberMe" name="remember_me">
                             <label class="form-check-label" for="rememberMe">Remember me</label>
-                            <a href="{% url 'password_reset' %}" class="float-end text-success">
+                            <!-- Password reset temporarily disabled -->
+                            <!-- <a href="#" class="float-end text-success" data-bs-toggle="tooltip" title="Password reset coming soon">
                                 Forgot password?
-                            </a>
+                            </a> -->
                         </div>
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-success btn-lg">
@@ -46,7 +47,7 @@
                     <div class="text-center mt-3">
                         <p class="mb-0">
                             Don't have an account? 
-                            <a href="{% url 'signup' %}" class="text-success">Sign Up</a>
+                            <a href="{% url 'accounts:signup' %}" class="text-success">Sign Up</a>
                         </p>
                     </div>
                 </div>
