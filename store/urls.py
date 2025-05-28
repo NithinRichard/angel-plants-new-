@@ -26,7 +26,7 @@ urlpatterns = [
     # API URLs
     path('api/', include(api_urls)),
     
-    # Home page - accessible at both / and /store/
+    # Home page - accessible at /store/
     path('', views.HomeView.as_view(), name='home'),
     
     # Other core pages

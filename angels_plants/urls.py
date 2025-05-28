@@ -9,7 +9,6 @@ from django.views.decorators.csrf import requires_csrf_token
 from django.template import loader
 from django.contrib.auth import views as auth_views
 from store.views import HomeView
-
 # Simple test view
 def test_view(request):
     return HttpResponse("Test view is working!")
@@ -29,10 +28,10 @@ def home_view(request):
 
 urlpatterns = [
     # Home page - serve store's home view directly
-    path('', views.HomeView.as_view(), name='home'),
+    path('', HomeView.as_view(), name='home'),
     
     # Store app - include with empty prefix
-    path('', include('store.urls')),
+    path('store/', include('store.urls')),
     
     # Auth URLs - Moved to accounts app
     path('accounts/', include('accounts.urls', namespace='accounts')),
