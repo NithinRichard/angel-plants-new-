@@ -29,6 +29,15 @@ def get_razorpay_client():
     razorpay_key_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', '')
     
     # Debug logging
+    logger.debug(f"RAZORPAY_KEY_ID from settings: {'set' if razorpay_key_id else 'not set'}")
+    logger.debug(f"RAZORPAY_KEY_SECRET from settings: {'set' if razorpay_key_secret else 'not set'}")
+    
+    # Log all settings that start with RAZORPAY_ for debugging
+    razorpay_settings = {k: v for k, v in vars(settings).items() 
+                        if k.startswith('RAZORPAY_') and not k.startswith('_')}
+    logger.debug(f"All Razorpay settings: {razorpay_settings}")
+    
+    # Debug logging
     key_id_display = f"{razorpay_key_id[:8]}..." if razorpay_key_id and len(razorpay_key_id) > 8 else str(razorpay_key_id)
     logger.debug(f"RAZORPAY_KEY_ID from settings: {key_id_display}")
     

@@ -10,6 +10,13 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
+# Debug: Print environment variables
+print("\n=== Environment Variables ===")
+print(f"DJANGO_SETTINGS_MODULE: {os.environ.get('DJANGO_SETTINGS_MODULE')}")
+print(f"RAZORPAY_KEY_ID from env: {'set' if os.environ.get('RAZORPAY_KEY_ID') else 'not set'}")
+print(f"RAZORPAY_KEY_SECRET from env: {'set' if os.environ.get('RAZORPAY_KEY_SECRET') else 'not set'}")
+print("===========================\n")
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
