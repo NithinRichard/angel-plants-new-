@@ -5,90 +5,81 @@ import json
 import uuid
 from functools import lru_cache
 from django.conf import settings
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseServerError
 from django.views.decorators.csrf import csrf_exempt
 from django.core.exceptions import ImproperlyConfigured
 
 # Set up logging
 logger = logging.getLogger(__name__)
 
-# Initialize Razorpay client as None
-client = None
+
+class RazorpayClient:
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(RazorpayClient, cls).__new__(cls)
+        return cls._instance
+    
+    def __init__(self):
+        if not self._initialized:
+            self.client = None
+            self._initialized = True
+    
+    def get_client(self):
+        if self.client is not None:
+            return self.client
+            
+        logger.info("Initializing Razorpay client...")
+        
+        # Get keys from Django settings
+        razorpay_key_id = getattr(settings, 'RAZORPAY_KEY_ID', '')
+        razorpay_key_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', '')
+        
+        # Debug logging
+        logger.debug(f"RAZORPAY_KEY_ID from settings: {'set' if razorpay_key_id else 'not set'}")
+        
+        # Validate keys
+        if not razorpay_key_id or not razorpay_key_secret:
+            error_msg = "RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set in settings"
+            logger.critical(error_msg)
+            raise ImproperlyConfigured(error_msg)
+            
+        if not isinstance(razorpay_key_id, str) or not razorpay_key_id.strip():
+            error_msg = "RAZORPAY_KEY_ID is empty or not a valid string"
+            logger.critical(error_msg)
+            raise ImproperlyConfigured(error_msg)
+            
+        if not isinstance(razorpay_key_secret, str) or not razorpay_key_secret.strip():
+            error_msg = "RAZORPAY_KEY_SECRET is empty or not a valid string"
+            logger.critical(error_msg)
+            raise ImproperlyConfigured(error_msg)
+        
+        try:
+            self.client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
+            logger.info("Successfully initialized Razorpay client")
+            return self.client
+            
+        except Exception as e:
+            error_msg = f"Failed to initialize Razorpay client: {str(e)}"
+            logger.critical(error_msg)
+            raise ImproperlyConfigured(error_msg)
+
+# Initialize the client wrapper (doesn't create the client yet)
+razorpay_client = RazorpayClient()
 
 def get_razorpay_client():
     """Initialize and return the Razorpay client with proper error handling"""
-    global client
-    
-    if client is not None:
-        return client
-        
-    logger.info("Initializing Razorpay client...")
-    
-    # Get keys from Django settings
-    razorpay_key_id = getattr(settings, 'RAZORPAY_KEY_ID', '')
-    razorpay_key_secret = getattr(settings, 'RAZORPAY_KEY_SECRET', '')
-    
-    # Debug logging
-    logger.debug(f"RAZORPAY_KEY_ID from settings: {'set' if razorpay_key_id else 'not set'}")
-    logger.debug(f"RAZORPAY_KEY_SECRET from settings: {'set' if razorpay_key_secret else 'not set'}")
-    
-    # Log all settings that start with RAZORPAY_ for debugging
-    razorpay_settings = {k: v for k, v in vars(settings).items() 
-                        if k.startswith('RAZORPAY_') and not k.startswith('_')}
-    logger.debug(f"All Razorpay settings: {razorpay_settings}")
-    
-    # Debug logging
-    key_id_display = f"{razorpay_key_id[:8]}..." if razorpay_key_id and len(razorpay_key_id) > 8 else str(razorpay_key_id)
-    logger.debug(f"RAZORPAY_KEY_ID from settings: {key_id_display}")
-    
-    # Validate keys
-    if not razorpay_key_id or not razorpay_key_secret:
-        error_msg = "RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET must be set in settings"
-        logger.critical(error_msg)
-        raise ImproperlyConfigured(error_msg)
-        
-    if not isinstance(razorpay_key_id, str) or not razorpay_key_id.strip():
-        error_msg = "RAZORPAY_KEY_ID is empty or not a valid string"
-        logger.critical(error_msg)
-        raise ImproperlyConfigured(error_msg)
-        
-    if not isinstance(razorpay_key_secret, str) or not razorpay_key_secret.strip():
-        error_msg = "RAZORPAY_KEY_SECRET is empty or not a valid string"
-        logger.critical(error_msg)
-        raise ImproperlyConfigured(error_msg)
-    
-    logger.debug(f"Using Razorpay Key ID: {razorpay_key_id[:8]}...")
-    
     try:
-        client = razorpay.Client(auth=(razorpay_key_id, razorpay_key_secret))
-        logger.info("Successfully initialized Razorpay client")
-        
-        # Test the connection by fetching account details
-        try:
-            account = client.account.fetch()
-            logger.debug(f"Razorpay account details: {account}")
-        except Exception as e:
-            logger.warning(f"Could not fetch Razorpay account details: {str(e)}")
-            
-        logger.info("Razorpay client initialization complete")
-        return client
-        
+        return razorpay_client.get_client()
+    except ImproperlyConfigured as e:
+        logger.error(f"Failed to get Razorpay client: {str(e)}")
+        raise
     except Exception as e:
-        error_msg = f"Failed to initialize Razorpay client: {str(e)}"
-        logger.critical(error_msg)
-        raise ImproperlyConfigured(error_msg)
-
-# Initialize the client when the module loads
-try:
-    client = get_razorpay_client()
-except ImproperlyConfigured as e:
-    logger.error(f"Failed to initialize Razorpay client: {str(e)}")
-    # Don't raise here, let it fail when actually trying to use the client
-    
-except Exception as e:
-    error_msg = f"Failed to initialize Razorpay client: {str(e)}"
-    logger.critical(error_msg, exc_info=True)
-    raise
+        error_msg = f"Unexpected error getting Razorpay client: {str(e)}"
+        logger.critical(error_msg, exc_info=True)
+        raise ImproperlyConfigured(error_msg) from e
 
 def create_razorpay_order(amount, currency='INR', receipt=None, notes=None):
     """
