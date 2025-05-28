@@ -923,6 +923,15 @@ class Order(models.Model):
         CANCELLED = 'cancelled', _('Cancelled')
         REFUNDED = 'refunded', _('Refunded')
 
+    # Cart relationship
+    cart = models.OneToOneField(
+        Cart,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='order'
+    )
+    
     # Order information
     order_number = models.CharField(_('order number'), max_length=32, unique=True)
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='orders')
@@ -1180,89 +1189,7 @@ class OrderActivity(models.Model):
         return ip
 
 
-class Cart(models.Model):
-    CART_STATUS = (
-        ('active', 'Active'),
-        ('abandoned', 'Abandoned'),
-        ('converted', 'Converted to Order'),
-    )
-    
-    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='cart')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    status = models.CharField(max_length=20, choices=CART_STATUS, default='active')
-    item_count = models.PositiveIntegerField(default=0)
-    total = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    
-    class Meta:
-        ordering = ['-updated_at']
-    
-    def __str__(self):
-        return f"Cart #{self.id} - {self.user.username}"
-    
-    def update_totals(self):
-        """Update cart totals based on cart items"""
-        items = self.items.all()
-        self.item_count = items.count()
-        self.total = sum(item.quantity * item.price for item in items)  # Calculate total using quantity and price
-        self.save(update_fields=['item_count', 'total', 'updated_at'])
-    
-    @property
-    def total_quantity(self):
-        """Return the total quantity of all items in the cart"""
-        return self.items.aggregate(total_quantity=Sum('quantity'))['total_quantity'] or 0
-    
-    @property
-    def is_empty(self):
-        return self.items.count() == 0
 
-
-class CartItem(models.Model):
-    cart = models.ForeignKey(Cart, related_name='items', on_delete=models.CASCADE)
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='cart_items')
-    quantity = models.PositiveIntegerField(default=1)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        ordering = ['-created_at']
-        unique_together = ['cart', 'product']
-    
-    def __str__(self):
-        return f"{self.quantity} x {self.product.name} in cart {self.cart.id}"
-
-    def save(self, *args, **kwargs):
-        self.price = self.product.price * self.quantity
-        super().save(*args, **kwargs)
-        # Update cart totals when cart item is saved
-        self.cart.update_totals()
-
-    def delete(self, *args, **kwargs):
-        cart = self.cart
-        super().delete(*args, **kwargs)
-        # Update cart totals after deletion
-        cart.update_totals()
-
-    @property
-    def total_price(self):
-        return self.price * self.quantity
-
-    def increase_quantity(self, quantity=1):
-        self.quantity += quantity
-        self.price = self.product.price  # Update price to match current product price
-        self.save()
-        self.cart.update_totals()  # Update cart totals
-
-    def decrease_quantity(self, quantity=1):
-        if self.quantity > quantity:
-            self.quantity -= quantity
-            self.price = self.product.price  # Update price to match current product price
-            self.save()
-            self.cart.update_totals()  # Update cart totals
-        else:
-            self.delete()
-            self.cart.update_totals()  # Update cart totals after deletion
 
 
 
@@ -1348,6 +1275,17 @@ class ProductRating(models.Model):
 from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.db.models import Avg
+
+@receiver(post_save, sender=ProductRating)
+@receiver(post_save, sender=Order)
+def convert_cart_to_order(sender, instance, created, **kwargs):
+    """
+    When an order is created from a cart, update the cart status and clear its items.
+    """
+    if created and instance.cart:
+        cart = instance.cart
+        cart.status = 'converted'
+        cart.save()
 
 @receiver(post_save, sender=ProductRating)
 @receiver(post_delete, sender=ProductRating)
