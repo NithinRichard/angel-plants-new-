@@ -78,9 +78,12 @@ def cart(request):
         'is_guest_cart': False
     }
     
-    if hasattr(request, 'user') and request.user.is_authenticated:
-        # For authenticated users
-        try:
+    if not hasattr(request, 'user'):
+        return context
+        
+    try:
+        if request.user.is_authenticated:
+            # For authenticated users
             cart = get_or_create_cart(request)
             if cart:
                 cart_items = list(CartItem.objects.filter(cart=cart).select_related('product'))
@@ -98,43 +101,50 @@ def cart(request):
                     'cart_items': cart_items,
                     'is_guest_cart': False
                 })
-        except Exception as e:
-            import logging
-            logger = logging.getLogger(__name__)
-            logger.error(f"Error in cart context processor: {str(e)}")
-    else:
-        # For anonymous users, use session-based cart
-        guest_cart = request.session.get('guest_cart', {})
-        cart_items = []
-        cart_total = Decimal('0.00')
-        
-        # Get product details for items in the guest cart
-        product_ids = list(guest_cart.keys())
-        products = Product.objects.in_bulk(product_ids)
-        
-        for product_id, item in guest_cart.items():
-            if product_id in products:
-                product = products[product_id]
-                quantity = item.get('quantity', 0)
-                price = Decimal(str(item.get('price', 0)))
-                total_price = price * quantity
+        else:
+            # For anonymous users, use session-based cart
+            guest_cart = request.session.get('guest_cart', {})
+            cart_items = []
+            cart_total = Decimal('0.00')
+            
+            # Get product details for items in the guest cart
+            product_ids = [pid for pid in guest_cart.keys() if pid.isdigit()]
+            if product_ids:
+                products = Product.objects.filter(id__in=product_ids, is_active=True).in_bulk()
                 
-                cart_items.append({
-                    'product': product,
-                    'quantity': quantity,
-                    'price': price,
-                    'total_price': total_price,
-                    'is_guest_item': True
-                })
-                
-                cart_total += total_price
-        
-        context.update({
-            'cart_count': sum(item['quantity'] for item in cart_items),
-            'cart_total': cart_total,
-            'cart_items': cart_items,
-            'is_guest_cart': True
-        })
+                for product_id, item in guest_cart.items():
+                    if not product_id.isdigit():
+                        continue
+                        
+                    product_id = int(product_id)
+                    if product_id in products:
+                        product = products[product_id]
+                        quantity = int(item.get('quantity', 1))
+                        price = Decimal(str(item.get('price', 0)))
+                        total_price = price * quantity
+                        
+                        cart_items.append({
+                            'product': product,
+                            'quantity': quantity,
+                            'price': price,
+                            'total_price': total_price,
+                            'is_guest_item': True
+                        })
+                        
+                        cart_total += total_price
+            
+            context.update({
+                'cart_count': sum(item['quantity'] for item in cart_items),
+                'cart_total': cart_total,
+                'cart_items': cart_items,
+                'is_guest_cart': True
+            })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error in cart context processor: {str(e)}")
+        # Return empty context on error to prevent template errors
+        return context
     
     return context
 
