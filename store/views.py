@@ -2433,28 +2433,36 @@ class CheckoutView(LoginRequiredMixin, View):
             messages.error(request, "Your cart is empty. Add some products before checking out.")
             return redirect('store:cart')
         
-        # Get or create order
-        order, created = Order.objects.get_or_create(
+        # Try to get the most recent pending order for the user
+        order = Order.objects.filter(
             user=request.user,
-            payment_status=False,
-            defaults={
-                'first_name': request.user.first_name or '',
-                'last_name': request.user.last_name or '',
-                'email': request.user.email or '',
-                'address': '',
-                'city': '',
-                'state': '',
-                'postal_code': '',
-                'country': 'India',
-                'status': 'pending',
-                'payment_status': False,
-                'payment_method': 'cash_on_delivery'
-            }
-        )
+            payment_status=False
+        ).order_by('-created_at').first()
         
-        # Always sync cart items with order, even if order exists
-        if not created:
-            # Clear existing order items
+        # If no pending order exists, create a new one
+        if not order:
+            order = Order.objects.create(
+                user=request.user,
+                first_name=request.user.first_name or '',
+                last_name=request.user.last_name or '',
+                email=request.user.email or '',
+                address='',
+                city='',
+                state='',
+                postal_code='',
+                country='India',
+                status='pending',
+                payment_status=False,
+                payment_method='cash_on_delivery',
+                cart=cart  # Associate the cart with the order
+            )
+        else:
+            # If order exists but is not associated with the current cart, update it
+            if not order.cart:
+                order.cart = cart
+                order.save(update_fields=['cart'])
+                
+            # Clear existing order items to resync with cart
             order.items.all().delete()
         
         # Create/update order items from cart
