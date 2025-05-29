@@ -2180,8 +2180,7 @@ class CartView(LoginRequiredMixin, View):
                 defaults={'status': 'active'}
             )
             
-            # Debug: Print cart info
-            print(f"Cart ID: {cart.id}, Created: {created}")
+            print(f"[DEBUG] CartView - Cart ID: {cart.id}, Created: {created}")
             
             # Ensure cart totals are up to date
             cart.update_totals()
@@ -2194,33 +2193,53 @@ class CartView(LoginRequiredMixin, View):
             tax = cart.total * tax_rate
             
             # Get cart items with related products to minimize database queries
-            items = cart.items.select_related('product').all()
+            # Only get active products that exist
+            items = cart.items.select_related('product').filter(product__isnull=False, product__is_active=True)
             
             # Debug: Print items
-            print(f"Number of items in cart: {items.count()}")
-            for item in items:
-                print(f"Item: {item.product.name if item.product else 'No product'}, Qty: {item.quantity}, Price: {item.price}")
+            print(f"[DEBUG] CartView - Number of active items in cart: {items.count()}")
+            
+            # Check for any items with missing or inactive products
+            all_items = cart.items.select_related('product').all()
+            for item in all_items:
+                if not item.product:
+                    print(f"[WARNING] Cart {cart.id} has an item with no product (Item ID: {item.id})")
+                elif not item.product.is_active:
+                    print(f"[WARNING] Cart {cart.id} has an inactive product: {item.product.name} (Product ID: {item.product.id})")
             
             # Calculate total with shipping and tax
             total_with_shipping = (cart.total + shipping_cost + tax).quantize(Decimal('0.00'))
             
+            # Prepare context with all necessary data
             context = {
                 'cart': cart,
-                'items': items,  # Add cart items to context
+                'items': items,  # Only include items with active products
                 'shipping_cost': shipping_cost.quantize(Decimal('0.00')),
                 'tax': tax.quantize(Decimal('0.00')),
                 'total_with_shipping': total_with_shipping,
-                'is_cart_empty': items.count() == 0  # Explicitly set cart empty status
+                'is_cart_empty': not items.exists()  # Check if there are any items
             }
             
+            print(f"[DEBUG] CartView - Rendering template with {items.count()} items")
             return render(request, 'store/cart.html', context)
             
         except Exception as e:
-            print(f"Error in CartView: {str(e)}")
+            error_msg = f"Error in CartView: {str(e)}"
+            print(f"[ERROR] {error_msg}")
             import traceback
             traceback.print_exc()
+            
             # Return empty cart context if there's an error
-            return render(request, 'store/cart.html', {'cart': None, 'is_cart_empty': True})
+            context = {
+                'cart': None,
+                'items': [],
+                'shipping_cost': Decimal('0.00'),
+                'tax': Decimal('0.00'),
+                'total_with_shipping': Decimal('0.00'),
+                'is_cart_empty': True,
+                'error': 'An error occurred while loading your cart.'
+            }
+            return render(request, 'store/cart.html', context)
 
 class AddToCartView(LoginRequiredMixin, View):
     def post(self, request, *args, **kwargs):

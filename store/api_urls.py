@@ -21,3 +21,5 @@ urlpatterns = [
 ]
 
 api_urlpatterns = urlpatterns
+
+
