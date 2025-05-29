@@ -32,8 +32,8 @@ urlpatterns = [
     # Home page - serve store's home view directly
     path('', HomeView.as_view(), name='home'),
     
-    # Store app - include with empty prefix
-    path('store/', include('store.urls')),
+    # Store app - include with namespace
+    path('store/', include('store.urls', namespace='store')),
     
     # Auth URLs - Moved to accounts app
     path('accounts/', include('accounts.urls', namespace='accounts')),
@@ -43,9 +43,6 @@ urlpatterns = [
     
     # Admin URLs
     path('admin/', admin.site.urls),
-    
-    # Store app
-    path('store/', include('store.urls', namespace='store')),
     
     # Payment app - Handle both /payment/ and /payments/
     path('payment/', include([

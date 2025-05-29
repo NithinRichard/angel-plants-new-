@@ -45,23 +45,24 @@ urlpatterns = [
     path('search/', views.ProductSearchView.as_view(), name='product_search'),
     
     # Cart and Checkout
+    # Cart URLs
     path('cart/', views.CartView.as_view(), name='cart'),
     path('cart/update/', update_cart, name='update_cart'),
     path('cart/update/<int:item_id>/', update_cart, name='update_cart_item'),
     path('cart/add/<int:product_id>/', add_to_cart, name='add_to_cart'),
-    path('checkout/', views.CheckoutView.as_view(), name='checkout'),
-    path('checkout/success/', views.CheckoutSuccessView.as_view(), name='checkout_success'),
-    path('checkout/cancel/', views.CheckoutCancelView.as_view(), name='checkout_cancel'),
-    path('cart/clear/', views.ClearCartView.as_view(), name='clear_cart'),
     path('cart/remove/<int:product_id>/', remove_from_cart, name='remove_from_cart'),
     path('cart/clear/', views.ClearCartView.as_view(), name='clear_cart'),
+    
+    # Checkout URLs
     path('checkout/', views.CheckoutView.as_view(), name='checkout'),
+    path('checkout/success/<str:order_number>/', views.CheckoutSuccessView.as_view(), name='checkout_success'),
+    path('checkout/cancel/', views.CheckoutCancelView.as_view(), name='checkout_cancel'),
+    
+    # Payment URLs
     path('checkout/payment/<int:order_id>/', PaymentView.as_view(), name='payment'),
     path('checkout/payment/create-order/', CreateRazorpayOrderView.as_view(), name='create_razorpay_order'),
     path('checkout/payment/success/', PaymentSuccessView.as_view(), name='payment_success'),
     path('checkout/payment/failed/', PaymentFailedView.as_view(), name='payment_failed'),
-    path('checkout/success/<str:order_number>/', views.CheckoutSuccessView.as_view(), name='checkout_success'),
-    path('checkout/cancel/', views.CheckoutCancelView.as_view(), name='checkout_cancel'),
     path('payment/webhook/', payment_webhook, name='payment_webhook'),
     
     # User account
