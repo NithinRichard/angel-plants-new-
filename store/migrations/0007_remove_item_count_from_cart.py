@@ -11,8 +11,22 @@ class Migration(migrations.Migration):
     operations = [
         migrations.RunSQL(
             """
-            ALTER TABLE store_cart 
-            DROP COLUMN IF EXISTS item_count;
+            SET @dbname = DATABASE();
+            SET @tablename = 'store_cart';
+            SET @columnname = 'item_count';
+            SET @preparedStatement = (SELECT IF(
+              EXISTS (
+                  SELECT * FROM INFORMATION_SCHEMA.COLUMNS
+                  WHERE (table_schema = @dbname)
+                    AND (table_name = @tablename)
+                    AND (column_name = @columnname)
+              ),
+              CONCAT('ALTER TABLE ', @tablename, ' DROP COLUMN ', @columnname, ';'),
+              'SELECT 1;'
+            ));
+            PREPARE alterIfExists FROM @preparedStatement;
+            EXECUTE alterIfExists;
+            DEALLOCATE PREPARE alterIfExists;
             """,
             # Reverse SQL (if needed, though it's not reversible)
             reverse_sql="""
