@@ -42,11 +42,18 @@ def add_to_cart(request, product_id):
             'status': 'success',
             'message': f"{product.name} added to cart",
             'item_count': cart.item_count,
+            'total_quantity': cart.total_quantity,
+            'cart_total': float(cart.total),
+            'shipping_cost': 99.00,  # Fixed shipping cost for India
+            'tax': 0.00,  # Will be calculated in the frontend
+            'total_with_shipping': float(cart.total) + 99.00,  # Total with shipping
             'cart_item': {
                 'id': cart_item.id,
                 'product_id': product.id,
+                'name': product.name,
                 'quantity': cart_item.quantity,
-                'total_price': str(cart_item.total_price)
+                'price': float(product.price),
+                'total_price': float(cart_item.quantity * product.price)
             }
         }
         
