@@ -21,11 +21,16 @@ def add_to_cart(request, product_id):
         quantity = max(1, quantity)
         
         # Get or create cart for the current user
-        cart, created = Cart.objects.get_or_create(
-            user=request.user,
-            status='active',
-            defaults={'status': 'active'}
-        )
+        try:
+            # First try to get an existing cart
+            cart = Cart.objects.get(user=request.user, status='active')
+        except Cart.DoesNotExist:
+            # If no cart exists, create a new one
+            try:
+                cart = Cart.objects.create(user=request.user, status='active')
+            except Exception as e:
+                # If there's still an error (e.g., race condition), try to get the cart again
+                cart = Cart.objects.get(user=request.user, status='active')
         
         # Get or create cart item
         cart_item, created = CartItem.objects.get_or_create(
