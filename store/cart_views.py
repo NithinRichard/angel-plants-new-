@@ -23,6 +23,7 @@ def add_to_cart(request, product_id):
         # Get or create cart for the current user
         cart, created = Cart.objects.get_or_create(
             user=request.user,
+            status='active',
             defaults={'status': 'active'}
         )
         
@@ -36,23 +37,16 @@ def add_to_cart(request, product_id):
         # Update quantity by the specified amount
         cart_item.increase_quantity(quantity)
         
-        # Prepare response data with all required fields
+        # Prepare response data
         response_data = {
             'status': 'success',
             'message': f"{product.name} added to cart",
             'item_count': cart.item_count,
-            'total_quantity': cart.total_quantity,
-            'cart_total': float(cart.total),
-            'shipping_cost': 99.00,  # Fixed shipping cost for India
-            'tax': float(cart.total) * 0.18,  # 18% GST
-            'total_with_shipping': float(cart.total) * 1.18 + 99.00,  # Total with tax and shipping
-            'updated_item': {
+            'cart_item': {
                 'id': cart_item.id,
                 'product_id': product.id,
-                'name': product.name,
                 'quantity': cart_item.quantity,
-                'price': float(product.price),
-                'total_price': float(cart_item.total_price)
+                'total_price': str(cart_item.total_price)
             }
         }
         
@@ -71,6 +65,9 @@ def add_to_cart(request, product_id):
         error_msg = 'Product not found.'
     except Exception as e:
         error_msg = f'An error occurred: {str(e)}'
+        print(f"Error in add_to_cart: {error_msg}")
+        import traceback
+        traceback.print_exc()
     
     # Handle errors
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
