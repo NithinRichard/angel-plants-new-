@@ -642,10 +642,10 @@ class Cart(models.Model):
         ('converted', 'Converted to Order'),
     ]
     
-    user = models.OneToOneField(
+    user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='cart',
+        related_name='carts',
         verbose_name=_('user')
     )
     status = models.CharField(
@@ -656,12 +656,38 @@ class Cart(models.Model):
     )
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
-
+    total = models.DecimalField(
+        _('total'),
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text=_('Total amount for the cart')
+    )
     
     class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user', 'status'],
+                condition=models.Q(status='active'),
+                name='unique_active_cart_per_user'
+            )
+        ]
         verbose_name = _('cart')
         verbose_name_plural = _('carts')
         ordering = ['-updated_at']
+    
+    def save(self, *args, **kwargs):
+        if self.status == 'active' and self.user_id:
+            # Get all active carts for this user
+            active_carts = Cart.objects.filter(
+                user=self.user,
+                status='active'
+            ).exclude(pk=getattr(self, 'pk', None))
+            
+            # Mark other active carts as abandoned
+            active_carts.update(status='abandoned')
+        
+        super().save(*args, **kwargs)
     
     def __str__(self):
         return f"Cart for {self.user.email}"
