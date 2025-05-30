@@ -665,13 +665,6 @@ class Cart(models.Model):
     )
     
     class Meta:
-        constraints = [
-            models.UniqueConstraint(
-                fields=['user', 'status'],
-                condition=models.Q(status='active'),
-                name='unique_active_cart_per_user'
-            )
-        ]
         verbose_name = _('cart')
         verbose_name_plural = _('carts')
         ordering = ['-updated_at']
