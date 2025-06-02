@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load static %}
 
 {% block title %}Order Confirmation - Angel's Plant Shop{% endblock %}
 
@@ -152,10 +153,14 @@
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" width="60" class="me-3">
+                                                {% if item.product.image %}
+                                                    <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" width="60" class="me-3 product-image" data-fallback="{% static 'images/placeholder-product.png' %}">
+                                                {% else %}
+                                                    <img src="{% static 'images/placeholder-product.png' %}" alt="{{ item.product.name }}" width="60" class="me-3">
+                                                {% endif %}
                                                 <div>
                                                     <h6 class="mb-1">{{ item.product.name }}</h6>
-                                                    <p class="text-muted mb-0">{{ item.product.category.name }}</p>
+                                                    <p class="text-muted mb-0">{{ item.product.category.name|default:"Uncategorized" }}</p>
                                                 </div>
                                             </div>
                                         </td>
@@ -330,6 +335,20 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
+    // Handle missing product images
+    document.addEventListener('DOMContentLoaded', function() {
+        const productImages = document.querySelectorAll('.product-image');
+        const fallbackImage = "{% static 'images/placeholder-product.png' %}";
+        
+        productImages.forEach(img => {
+            img.onerror = function() {
+                this.onerror = null;  // Prevent infinite loop if fallback also fails
+                this.src = fallbackImage;
+            };
+        });
+    });
+</script>
 <script src="{% static 'js/order-confirmation.js' %}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
