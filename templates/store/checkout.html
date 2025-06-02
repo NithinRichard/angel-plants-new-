@@ -56,18 +56,33 @@
                                         </div>
                                         <div class="col-md-5">
                                             <label for="country" class="form-label">Country</label>
-                                            <select class="form-select" id="country" name="country" required>
-                                                <option value="">Choose...</option>
-                                                <option value="United States">United States</option>
-                                                <option value="Canada">Canada</option>
-                                                <option value="United Kingdom">United Kingdom</option>
-                                                <option value="Australia">Australia</option>
-                                                <option value="India" selected>India</option>
-                                            </select>
+                                            <input type="text" class="form-control" id="country" name="country" value="India" readonly>
+                                            <input type="hidden" name="country" value="India">
                                         </div>
-                                        <div class="col-md-4">
+                                        <div class="col-md-7">
                                             <label for="state" class="form-label">State</label>
-                                            <input type="text" class="form-control" name="state" id="state" required>
+                                            <input type="text" class="form-control" id="state" name="state" value="Kerala" readonly>
+                                            <input type="hidden" name="state" value="Kerala">
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="district" class="form-label">District</label>
+                                            <select class="form-select" id="district" name="district" required>
+                                                <option value="">Select District</option>
+                                                <option value="Thiruvananthapuram">Thiruvananthapuram</option>
+                                                <option value="Kollam">Kollam</option>
+                                                <option value="Pathanamthitta">Pathanamthitta</option>
+                                                <option value="Alappuzha">Alappuzha</option>
+                                                <option value="Kottayam">Kottayam</option>
+                                                <option value="Idukki">Idukki</option>
+                                                <option value="Ernakulam">Ernakulam</option>
+                                                <option value="Thrissur">Thrissur</option>
+                                                <option value="Palakkad">Palakkad</option>
+                                                <option value="Malappuram">Malappuram</option>
+                                                <option value="Kozhikode">Kozhikode</option>
+                                                <option value="Wayanad">Wayanad</option>
+                                                <option value="Kannur">Kannur</option>
+                                                <option value="Kasaragod">Kasaragod</option>
+                                            </select>
                                         </div>
                                         <div class="col-md-3">
                                             <label for="postal_code" class="form-label">Pincode</label>
