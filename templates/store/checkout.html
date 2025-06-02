@@ -285,12 +285,21 @@
         checkoutForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const submitBtn = document.getElementById('submitBtn');
-            const paymentMethod = document.querySelector('input[name="payment_method"]:checked').value;
+            const submitBtn = document.getElementById('submit-order-btn');
+            const paymentMethod = document.querySelector('input[name="payment_method"]:checked');
+            
+            if (!paymentMethod) {
+                alert('Please select a payment method');
+                return false;
+            }
             
             // Disable submit button to prevent double submission
+            const submitText = submitBtn.querySelector('#submit-btn-text');
+            const submitSpinner = submitBtn.querySelector('#submit-btn-spinner');
+            
             submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Processing...';
+            submitText.textContent = 'Processing...';
+            submitSpinner.classList.remove('d-none');
             
             // Collect form data
             const formData = new FormData(checkoutForm);
@@ -310,7 +319,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    if (paymentMethod === 'razorpay' && data.razorpay) {
+                    if (paymentMethod.value === 'razorpay' && data.razorpay) {
                         // Handle Razorpay payment
                         const options = {
                             key: data.razorpay.key_id,
@@ -386,14 +395,16 @@
                     // Show error message
                     alert(data.message || 'An error occurred. Please try again.');
                     submitBtn.disabled = false;
-                    submitBtn.innerHTML = 'Place Order';
+                    submitText.textContent = 'Place Order';
+                    submitSpinner.classList.add('d-none');
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
                 alert('An error occurred. Please try again.');
                 submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Place Order';
+                submitText.textContent = 'Place Order';
+                submitSpinner.classList.add('d-none');
             });
         });
     });
