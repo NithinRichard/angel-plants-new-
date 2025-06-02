@@ -112,13 +112,6 @@
                                             phoneInput.addEventListener('input', function() {
                                                 this.value = this.value.replace(/\D/g, '').slice(0, 10);
                                             });
-                                            
-                                            // Add +91 to the value when form is submitted
-                                            document.getElementById('checkoutForm').addEventListener('submit', function() {
-                                                if (phoneInput.value && !phoneInput.value.startsWith('+91') && phoneInput.value.length === 10) {
-                                                    phoneInput.value = '+91' + phoneInput.value;
-                                                }
-                                            });
                                         });
                                         </script>
                                     </div>
