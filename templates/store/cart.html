@@ -203,7 +203,7 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // If no submit button, try to find the closest button to the input
         if (!submitBtn) {
-            console.log('No submit button found, looking for closest button');
+            // No button found, continue without it
         }
 
         // Show loading state if we have a button
@@ -251,7 +251,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         })
         .catch(error => {
-            console.error('Error updating cart:', error);
             showAlert(error.message || 'An error occurred while updating your cart. Please try again.', 'danger');
             throw error; // Re-throw to allow chaining
         })

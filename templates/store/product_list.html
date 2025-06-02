@@ -77,16 +77,7 @@
                 <h2 class="mb-4">{{ category.name }}</h2>
             {% endif %}
             
-            <!-- Debug Info -->
-            <div class="alert alert-info mb-4">
-                <h5>Debug Info:</h5>
-                <p>Categories: {{ categories|length }}</p>
-                <p>Products: {{ products|length }}</p>
-                {% if products %}
-                    <p>First product: {{ products.0.name }} (ID: {{ products.0.id }})</p>
-                {% endif %}
-            </div>
-            
+
             <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
                 {% for product in products %}
                     <div class="col">
