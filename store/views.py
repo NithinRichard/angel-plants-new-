@@ -2690,7 +2690,7 @@ class CheckoutView(LoginRequiredMixin, View):
         # Get related products (products from the same categories as ordered items)
         related_products = Product.objects.filter(
             category__in=ordered_categories,
-            available=True
+            is_active=True
         ).exclude(
             id__in=order.items.values_list('product_id', flat=True)
         ).distinct().order_by('?')[:8]  # Get 8 random related products
@@ -2698,7 +2698,7 @@ class CheckoutView(LoginRequiredMixin, View):
         # If not enough related products, get some random products
         if related_products.count() < 4:
             additional_products = Product.objects.filter(
-                available=True
+                is_active=True
             ).exclude(
                 id__in=order.items.values_list('product_id', flat=True)
             ).exclude(
