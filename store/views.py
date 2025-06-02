@@ -1439,6 +1439,7 @@ def update_cart(request, item_id=None):
         response_data = {
             'success': True,
             'message': 'Cart updated successfully',
+            'message_shown': False,  # Flag to indicate if message was shown server-side
             'item_count': cart_count,
             'total': cart_total,
             'item_total': item_subtotal if 'item_subtotal' in locals() else 0,
