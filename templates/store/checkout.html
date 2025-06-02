@@ -90,8 +90,37 @@
                                         </div>
                                         <div class="col-12">
                                             <label for="phone" class="form-label">Phone</label>
-                                            <input type="tel" class="form-control" name="phone" id="phone" required>
+                                            <div class="input-group">
+                                                <span class="input-group-text">+91</span>
+                                                <input type="tel" class="form-control" name="phone" id="phone" placeholder="Enter 10-digit mobile number" pattern="[0-9]{10}" title="Please enter a valid 10-digit phone number" required>
+                                            </div>
+                                            <div class="form-text">Enter your 10-digit mobile number</div>
                                         </div>
+                                        <script>
+                                        document.addEventListener('DOMContentLoaded', function() {
+                                            const phoneInput = document.getElementById('phone');
+                                            
+                                            // Format phone number when input loses focus
+                                            phoneInput.addEventListener('blur', function() {
+                                                let value = this.value.replace(/\D/g, ''); // Remove all non-digits
+                                                if (value.length === 10) {
+                                                    this.value = value; // Just the 10 digits
+                                                }
+                                            });
+                                            
+                                            // Validate input to only allow numbers and limit to 10 digits
+                                            phoneInput.addEventListener('input', function() {
+                                                this.value = this.value.replace(/\D/g, '').slice(0, 10);
+                                            });
+                                            
+                                            // Add +91 to the value when form is submitted
+                                            document.getElementById('checkoutForm').addEventListener('submit', function() {
+                                                if (phoneInput.value && !phoneInput.value.startsWith('+91') && phoneInput.value.length === 10) {
+                                                    phoneInput.value = '+91' + phoneInput.value;
+                                                }
+                                            });
+                                        });
+                                        </script>
                                     </div>
                                 </div>
                             </div>
