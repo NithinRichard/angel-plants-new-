@@ -89,64 +89,55 @@
                                 <div class="col-md-12">
                                     <!-- Payment Options -->
                                     <div class="mb-3">
-                                        <div class="form-check">
+                                        <!-- Cash on Delivery Option -->
+                                        <div class="form-check mb-3">
                                             <input id="cash_on_delivery" name="payment_method" type="radio" class="form-check-input" value="cash_on_delivery" checked>
                                             <label class="form-check-label fw-bold" for="cash_on_delivery">
                                                 <i class="fas fa-truck me-2"></i>Cash on Delivery
                                             </label>
+                                            <div class="text-muted small mt-1">Pay in cash upon delivery</div>
                                         </div>
+                                        
+                                        <!-- Razorpay Option -->
                                         <div class="form-check">
                                             <input id="razorpay" name="payment_method" type="radio" class="form-check-input" value="razorpay">
                                             <label class="form-check-label fw-bold" for="razorpay">
                                                 <i class="fas fa-credit-card me-2"></i>Pay with Razorpay
                                             </label>
+                                            <div class="text-muted small mt-1">Secure online payment via Razorpay</div>
                                         </div>
                                     </div>
                                     
-                                    <!-- Credit/Debit Card Details (initially hidden) -->
-                                    <div id="credit-card-details" class="mt-3 p-3 border rounded d-none">
-                                        <div class="row">
-                                            <div class="col-md-12 mb-3">
-                                                <label for="cc-name" class="form-label">Name on card</label>
-                                                <input type="text" class="form-control" id="cc-name" placeholder="" required>
-                                                    <small class="text-muted">Full name as displayed on card</small>
-                                                </div>
-                                                
-                                                <div class="col-md-12 mb-3">
-                                                    <label for="cc-number" class="form-label">Card number</label>
-                                                    <input type="text" class="form-control" id="cc-number" placeholder="" required>
-                                                </div>
-                                                
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="cc-expiration" class="form-label">Expiration (MM/YY)</label>
-                                                    <input type="text" class="form-control" id="cc-expiration" placeholder="MM/YY" required>
-                                                </div>
-                                                
-                                                <div class="col-md-6 mb-3">
-                                                    <label for="cc-cvv" class="form-label">CVV</label>
-                                                    <input type="text" class="form-control" id="cc-cvv" placeholder="" required>
-                                                </div>
-                                                
-                                                <div class="col-12">
-                                                    <div class="form-check">
-                                                        <input type="checkbox" class="form-check-input" id="save-info" checked>
-                                                        <label class="form-check-label" for="save-info">Save this information for next time</label>
-                                                    </div>
-                                                </div>
-                                            </div>
+                                    <!-- Razorpay Payment Container (will be shown when Razorpay is selected) -->
+                                    <div id="razorpay-container" class="mt-3 p-3 border rounded" style="display: none;">
+                                        <p class="mb-3">You will be redirected to Razorpay's secure payment page to complete your purchase.</p>
+                                        <div class="alert alert-info small">
+                                            <i class="fas fa-lock me-2"></i>Your payment information is secured with 256-bit SSL encryption
                                         </div>
                                     </div>
-
-                                    <!-- Razorpay Payment Option -->
-                                    {% include 'payment/razorpay_payment.html' %}
-
-                                    <!-- Other Payment Options -->
-                                    <div class="form-check mt-3">
-                                        <input id="cod" name="paymentMethod" type="radio" class="form-check-input" value="cod">
-                                        <label class="form-check-label" for="cod">
-                                            <i class="fas fa-money-bill-wave me-2"></i>Cash on Delivery
-                                        </label>
-                                    </div>
+                                    
+                                    <!-- Payment Method Change Handler -->
+                                    <script>
+                                        document.addEventListener('DOMContentLoaded', function() {
+                                            const paymentMethod = document.querySelectorAll('input[name="payment_method"]');
+                                            const razorpayContainer = document.getElementById('razorpay-container');
+                                            
+                                            paymentMethod.forEach(method => {
+                                                method.addEventListener('change', function() {
+                                                    if (this.value === 'razorpay') {
+                                                        razorpayContainer.style.display = 'block';
+                                                    } else {
+                                                        razorpayContainer.style.display = 'none';
+                                                    }
+                                                });
+                                            });
+                                            
+                                            // Initialize visibility on page load
+                                            if (document.getElementById('razorpay').checked) {
+                                                razorpayContainer.style.display = 'block';
+                                            }
+                                        });
+                                    </script>
                                 </div>
                             </div>
                             
@@ -236,7 +227,6 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const checkoutForm = document.getElementById('checkoutForm');
