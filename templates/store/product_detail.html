@@ -3,22 +3,6 @@
 {% block title %}{{ product.name }} - Angel's Plant Shop{% endblock %}
 
 {% block content %}
-<!-- Quantity Display -->
-<div class="container mt-3">
-    <div class="alert alert-info">
-        <h4>Product Availability</h4>
-        <p><strong>Name:</strong> {{ product.name }}</p>
-        <p><strong>Price:</strong> ₹{{ product.price|floatformat:2 }}</p>
-        <p><strong>In Stock:</strong> 
-            <span class="badge {% if product.in_stock %}bg-success{% else %}bg-warning{% endif %}">
-                {% if product.in_stock %}Yes{% else %}No{% endif %}
-            </span>
-        </p>
-        <p><strong>Quantity Available:</strong> 
-            <span class="h5">{{ product.quantity }}</span> items
-        </p>
-    </div>
-</div>
 
 <div class="container py-5">
     <nav aria-label="breadcrumb">
