@@ -136,9 +136,24 @@
             </div>
             
             <div class="d-flex gap-2 mt-2">
-                <a href="#" class="btn btn-outline-secondary">
+                <button class="btn btn-outline-secondary" id="share-button" data-product-name="{{ product.name }}" data-product-url="{{ request.build_absolute_uri }}">
                     <i class="fas fa-share-alt me-2"></i>Share
-                </a>
+                </button>
+                <!-- Fallback share options (hidden by default) -->
+                <div id="fallback-share" class="btn-group" style="display: none;">
+                    <a href="https://www.facebook.com/sharer/sharer.php?u={{ request.build_absolute_uri|urlencode }}" target="_blank" class="btn btn-outline-primary btn-sm">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="https://twitter.com/intent/tweet?url={{ request.build_absolute_uri|urlencode }}&text=Check%20out%20{{ product.name|urlencode }}" target="_blank" class="btn btn-outline-info btn-sm">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="https://wa.me/?text={{ product.name|urlencode }}%20{{ request.build_absolute_uri|urlencode }}" target="_blank" class="btn btn-outline-success btn-sm">
+                        <i class="fab fa-whatsapp"></i>
+                    </a>
+                    <a href="mailto:?subject={{ product.name|urlencode }}&body=Check%20out%20this%20product:%0D%0A{{ product.name|urlencode }}%0D%0A{{ request.build_absolute_uri|urlencode }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-envelope"></i>
+                    </a>
+                </div>
             </div>
         </div>
     </div>
@@ -540,6 +555,48 @@
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
+        
+        // Initialize share button
+        const shareButton = document.getElementById('share-button');
+        if (shareButton) {
+            shareButton.addEventListener('click', shareProduct);
+        }
     });
+    
+    // Share functionality
+    function shareProduct() {
+        const shareButton = document.getElementById('share-button');
+        const productName = shareButton.dataset.productName;
+        const productUrl = shareButton.dataset.productUrl;
+        const shareText = `Check out ${productName} on Angel's Plants: ${productUrl}`;
+
+        // Check if Web Share API is supported
+        if (navigator.share) {
+            navigator.share({
+                title: productName,
+                text: `Check out ${productName} on Angel's Plants`,
+                url: productUrl
+            }).catch(err => {
+                console.error('Error sharing:', err);
+                showFallbackShare();
+            });
+        } else {
+            // Fallback for browsers that don't support Web Share API
+            showFallbackShare();
+        }
+    }
+
+    function showFallbackShare() {
+        const fallbackShare = document.getElementById('fallback-share');
+        if (fallbackShare) {
+            fallbackShare.style.display = 'inline-flex';
+            
+            // Optional: Hide the main share button
+            const shareButton = document.getElementById('share-button');
+            if (shareButton) {
+                shareButton.style.display = 'none';
+            }
+        }
+    }
 </script>
 {% endblock %}
