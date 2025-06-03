@@ -2200,67 +2200,92 @@ class ProductDetailView(DetailView):
 
 class CartView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
+        logger.debug(f"[CartView] Loading cart for user {request.user.id}")
+        
         try:
-            # Get or create a new cart
-            cart, created = Cart.objects.get_or_create(
-                user=request.user,
-                status='active',
-                defaults={'status': 'active'}
-            )
-            
-            print(f"[DEBUG] CartView - Cart ID: {cart.id}, Created: {created}")
-            
-            # Ensure cart totals are up to date
-            cart.update_totals()
-            
-            # Shipping cost for India
-            shipping_cost = Decimal('99.00')
-            
-            # GST rate in India (18%)
-            tax_rate = Decimal('0.18')
-            
-            # Get all cart items with related products
-            all_items = cart.items.select_related('product').filter(product__isnull=False)
-            
-            # Debug log all items before processing
-            print(f"[DEBUG] All cart items before processing: {[(item.id, item.product.name if item.product else 'No product', item.quantity) for item in all_items]}")
-            
-            # Separate active and inactive items
-            active_items = []
-            inactive_items = []
-            
-            for item in all_items:
-                if item.product and item.product.is_active:
-                    # Check stock for active products
-                    if item.product.track_quantity and item.quantity > item.product.quantity:
-                        if item.product.quantity > 0:
-                            messages.warning(
-                                request,
-                                f"Reduced quantity of '{item.product.name}' to available stock ({item.product.quantity}).",
-                                extra_tags='cart_warning'
-                            )
-                            item.quantity = item.product.quantity
-                            item.save()
-                            active_items.append(item)
-                        else:
-                            # Product is out of stock
+            # Get or create cart with proper locking
+            with transaction.atomic():
+                cart, created = Cart.objects.select_for_update().get_or_create(
+                    user=request.user, 
+                    status='active', 
+                    defaults={'status': 'active'}
+                )
+                
+                logger.debug(f"[CartView] Cart ID: {cart.id}, Created: {created}")
+                
+                # Get all items with related product data
+                all_items = list(cart.items.select_related('product').filter(product__isnull=False))
+                logger.debug(f"[CartView] Found {len(all_items)} items in cart")
+                
+                active_items = []
+                inactive_items = []
+                
+                # Process each cart item
+                for item in all_items:
+                    try:
+                        logger.debug(
+                            f"[CartView] Processing item {item.id}: {item.product.name if item.product else 'No product'}, "
+                            f"Qty: {item.quantity}, "
+                            f"Active: {getattr(item.product, 'is_active', 'N/A')}, "
+                            f"In Stock: {getattr(item.product, 'quantity', 'N/A')}, "
+                            f"Track Qty: {getattr(item.product, 'track_quantity', 'N/A')}"
+                        )
+                        
+                        # Check if product exists and is active
+                        if not item.product:
+                            logger.warning(f"[CartView] Item {item.id} has no associated product")
                             inactive_items.append(item)
-                            messages.warning(
-                                request,
-                                f"The product '{item.product.name}' is out of stock and has been removed from your cart.",
-                                extra_tags='cart_warning'
-                            )
-                    else:
-                        active_items.append(item)
-                else:
-                    inactive_items.append(item)
+                            continue
+                            
+                        # Refresh product data
+                        item.product.refresh_from_db()
+                        
+                        if not item.product.is_active:
+                            logger.debug(f"[CartView] Product {item.product.id} is not active")
+                            inactive_items.append(item)
+                            continue
+                            
+                        # Check stock if tracking is enabled
+                        if item.product.track_quantity:
+                            if item.quantity > item.product.quantity:
+                                if item.product.quantity > 0:
+                                    # Reduce quantity to available stock
+                                    old_qty = item.quantity
+                                    item.quantity = item.product.quantity
+                                    item.save(update_fields=['quantity', 'updated_at'])
+                                    
+                                    logger.info(f"[CartView] Reduced quantity of {item.product.name} from {old_qty} to {item.quantity}")
+                                    messages.warning(
+                                        request, 
+                                        f"Reduced quantity of '{item.product.name}' to available stock ({item.product.quantity}).",
+                                        extra_tags='cart_warning'
+                                    )
+                                    active_items.append(item)
+                                else:
+                                    # Out of stock
+                                    logger.info(f"[CartView] Product {item.product.id} is out of stock")
+                                    inactive_items.append(item)
+                                    messages.warning(
+                                        request, 
+                                        f"The product '{item.product.name}' is out of stock and has been removed from your cart.",
+                                        extra_tags='cart_warning'
+                                    )
+                            else:
+                                # Sufficient stock
+                                active_items.append(item)
+                        else:
+                            # Product doesn't track quantity
+                            active_items.append(item)
+                            
+                    except Exception as e:
+                        logger.error(f"[CartView] Error processing cart item {item.id}: {str(e)}", exc_info=True)
+                        inactive_items.append(item)
             
-            # Debug logging
-            print(f"[DEBUG] CartView - Total items: {all_items.count()}")
-            print(f"[DEBUG] CartView - Active items: {len(active_items)}")
-            print(f"[DEBUG] CartView - Inactive items: {len(inactive_items)}")
-            
-            # Handle inactive products
+            # Remove inactive items
+            if inactive_items:
+                inactive_count = len(inactive_items)
+                inactive_names = ", ".join([f"'{item.product.name}'" for item in inactive_items if item.product])
+                logger.info(f"[CartView] Removing {inactive_count} inactive items: {inactive_names}")
             for item in inactive_items:
                 product_name = getattr(item.product, 'name', 'Unknown Product')
                 print(f"[WARNING] Cart {cart.id} has an inactive/out-of-stock product: {product_name} (Product ID: {getattr(item.product, 'id', 'N/A')})")
@@ -2533,13 +2558,6 @@ class CheckoutView(LoginRequiredMixin, View):
             
             # Debug: Log all cart items and their active status
             logger.debug(f"[Checkout] Processing cart {cart.id} with {len(all_cart_items)} items")
-            for item in all_cart_items:
-                logger.debug(
-                    f"[Checkout] Cart Item: {item.product.name if item.product else 'No product'}, "
-                    f"Active: {getattr(item.product, 'is_active', 'N/A')}, "
-                    f"Quantity: {item.quantity}, "
-                    f"In Stock: {getattr(item.product, 'quantity', 'N/A')}"
-                )
             
             # Filter for active products with sufficient stock
             active_cart_items = []
@@ -2548,38 +2566,62 @@ class CheckoutView(LoginRequiredMixin, View):
             with transaction.atomic():
                 for item in all_cart_items:
                     try:
-                        # Refresh the product to get the latest stock
-                        if item.product:
-                            item.product.refresh_from_db()
+                        # Log item details before processing
+                        item_debug = (
+                            f"[Cart Item {item.id}] Product: {item.product.name if item.product else 'None'}, "
+                            f"Active: {getattr(item.product, 'is_active', 'N/A')}, "
+                            f"Quantity: {item.quantity}, "
+                            f"In Stock: {getattr(item.product, 'quantity', 'N/A')}, "
+                            f"Track Qty: {getattr(item.product, 'track_quantity', 'N/A')}"
+                        )
+                        logger.debug(item_debug)
                         
-                        # Check if product is active and available
-                        if not item.product or not item.product.is_active:
+                        # Check if product exists and is active
+                        if not item.product:
+                            logger.debug(f"[Cart Item {item.id}] No product associated")
+                            inactive_items.append(item)
+                            continue
+                            
+                        # Refresh the product to get the latest stock
+                        item.product.refresh_from_db()
+                        
+                        if not item.product.is_active:
+                            logger.debug(f"[Cart Item {item.id}] Product is not active")
                             inactive_items.append(item)
                             continue
                             
                         # Check stock if tracking is enabled
-                        if item.product.track_quantity and item.quantity > item.product.quantity:
-                            if item.product.quantity > 0:
-                                # Reduce quantity to available stock
-                                item.quantity = item.product.quantity
-                                item.save(update_fields=['quantity', 'updated_at'])
-                                
-                                messages.warning(
-                                    self.request,
-                                    f"Reduced quantity of '{item.product.name}' to available stock ({item.product.quantity}).",
-                                    extra_tags='cart_warning'
-                                )
-                                active_cart_items.append(item)
+                        if item.product.track_quantity:
+                            if item.quantity > item.product.quantity:
+                                if item.product.quantity > 0:
+                                    # Reduce quantity to available stock
+                                    old_qty = item.quantity
+                                    item.quantity = item.product.quantity
+                                    item.save(update_fields=['quantity', 'updated_at'])
+                                    
+                                    logger.debug(f"[Cart Item {item.id}] Reduced quantity from {old_qty} to {item.quantity}")
+                                    messages.warning(
+                                        self.request,
+                                        f"Reduced quantity of '{item.product.name}' to available stock ({item.product.quantity}).",
+                                        extra_tags='cart_warning'
+                                    )
+                                    active_cart_items.append(item)
+                                else:
+                                    # Product is out of stock
+                                    logger.debug(f"[Cart Item {item.id}] Product is out of stock")
+                                    inactive_items.append(item)
+                                    messages.warning(
+                                        self.request,
+                                        f"'{item.product.name}' is out of stock and has been removed from your cart.",
+                                        extra_tags='cart_warning'
+                                    )
                             else:
-                                # Product is out of stock
-                                inactive_items.append(item)
-                                messages.warning(
-                                    self.request,
-                                    f"'{item.product.name}' is out of stock and has been removed from your cart.",
-                                    extra_tags='cart_warning'
-                                )
+                                # Sufficient stock available
+                                logger.debug(f"[Cart Item {item.id}] Sufficient stock available")
+                                active_cart_items.append(item)
                         else:
-                            # Product is available
+                            # Product doesn't track quantity
+                            logger.debug(f"[Cart Item {item.id}] Product doesn't track quantity")
                             active_cart_items.append(item)
                             
                     except Exception as e:
