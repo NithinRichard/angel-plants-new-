@@ -98,10 +98,8 @@
                     </div>
                     
                     <!-- Hidden input to store selected payment method -->
-                    <input type="hidden" name="payment_method" id="payment-method" value="razorpay">
-                    
                     <!-- Payment Form -->
-                    <form id="payment-form" method="post" action="{% url 'store:payment' pk=order.id %}">
+                    <form id="payment-form" method="post" action="{% url 'store:payment' order_id=order.id %}">
                         {% csrf_token %}
                         <input type="hidden" name="order_id" value="{{ order.id }}">
                         <input type="hidden" name="payment_method" id="payment-method" value="{{ order.payment_method|default:'razorpay' }}">
@@ -270,15 +268,15 @@
         
         function updatePaymentUI(method) {
             if (method === 'razorpay') {
-                razorpayForm.style.display = 'block';
-                codMessage.style.display = 'none';
-                payButtonText.textContent = `Pay ₹{{ order.total_amount|floatformat:2 }}`;
+                if (razorpayForm) razorpayForm.style.display = 'block';
+                if (codMessage) codMessage.style.display = 'none';
+                if (payButtonText) payButtonText.textContent = `Pay ₹{{ order.total_amount|floatformat:2 }}`;
             } else {
-                razorpayForm.style.display = 'none';
-                codMessage.style.display = 'block';
-                payButtonText.textContent = 'Place Order (Cash on Delivery)';
+                if (razorpayForm) razorpayForm.style.display = 'none';
+                if (codMessage) codMessage.style.display = 'block';
+                if (payButtonText) payButtonText.textContent = 'Place Order (Cash on Delivery)';
             }
-            paymentMethodInput.value = method;
+            if (paymentMethodInput) paymentMethodInput.value = method;
         }
         
         // Handle payment method selection
