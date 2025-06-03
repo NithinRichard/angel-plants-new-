@@ -2534,22 +2534,48 @@ class CheckoutView(LoginRequiredMixin, View):
                     messages.error(request, "No active cart found. Please add some products to your cart first.")
                     return redirect('store:cart')
                 
-                # Get cart items with product information
-                cart_items = cart.items.select_related('product').filter(product__isnull=False)
+                # Get all cart items with product information
+                all_cart_items = cart.items.select_related('product').filter(product__isnull=False)
                 
-                if not cart_items.exists():
-                    messages.error(request, "Your cart is empty. Please add some products before checking out.")
-                    return redirect('store:cart')
+                # Debug: Log all cart items and their active status
+                print(f"[DEBUG] All cart items: {all_cart_items.count()}")
+                for item in all_cart_items:
+                    print(f"[DEBUG] Cart Item: {item.product.name if item.product else 'No product'}, "
+                          f"Active: {getattr(item.product, 'is_active', 'N/A')}, "
+                          f"Quantity: {item.quantity}, "
+                          f"In Stock: {item.product.quantity if item.product and hasattr(item.product, 'quantity') else 'N/A'}")
                 
-                # Check stock for all items before proceeding
-                for item in cart_items:
-                    if item.product.track_quantity and item.product.quantity < item.quantity:
-                        messages.error(
+                # Filter for active products with sufficient stock
+                active_cart_items = []
+                inactive_items = []
+                
+                for item in all_cart_items:
+                    if not item.product or not item.product.is_active:
+                        inactive_items.append(item)
+                        continue
+                        
+                    if item.product.track_quantity and item.quantity > item.product.quantity:
+                        messages.warning(
                             request,
-                            f"Sorry, we only have {item.product.quantity} of '{item.product.name}' in stock. "
-                            f"Please update your cart and try again."
+                            f"Reduced quantity of '{item.product.name}' to available stock ({item.product.quantity}).",
+                            extra_tags='cart_warning'
                         )
-                        return redirect('store:cart')
+                        item.quantity = item.product.quantity
+                        item.save()
+                        
+                        if item.quantity > 0:
+                            active_cart_items.append(item)
+                        else:
+                            inactive_items.append(item)
+                    else:
+                        active_cart_items.append(item)
+                
+                # Remove inactive items from cart
+                if inactive_items:
+                    inactive_count = len(inactive_items)
+                    inactive_names = ", ".join([f"'{item.product.name}'" for item in inactive_items])
+                    messages.warning(request, f"Removed {inactive_count} inactive items from cart: {inactive_names}")
+                    CartItem.objects.filter(id__in=[item.id for item in inactive_items]).delete()
                 
                 # Create or update order
                 order, created = Order.objects.get_or_create(
@@ -2576,34 +2602,18 @@ class CheckoutView(LoginRequiredMixin, View):
                 # Clear existing items
                 order.items.all().delete()
                 
-                # Debug: Log all cart items and their active status
-                all_cart_items = cart.items.select_related('product').all()
-                print(f"[DEBUG] All cart items: {all_cart_items.count()}")
-                for item in all_cart_items:
-                    print(f"[DEBUG] Cart Item: {item.product.name if item.product else 'No product'}, "
-                          f"Active: {getattr(item.product, 'is_active', 'N/A')}, "
-                          f"Quantity: {item.quantity}")
-                
-                # Get active cart items
-                cart_items = all_cart_items.filter(product__is_active=True)
-                print(f"[DEBUG] Active cart items: {cart_items.count()}")
-                
-                if not cart_items.exists():
-                    messages.error(request, 
-                                 "Your cart contains no active products. "
-                                 "This might be because some products are no longer available. "
-                                 "Please update your cart and try again.")
+                if not active_cart_items:
+                    messages.error(
+                        request,
+                        "Your cart contains no active products. "
+                        "This might be because some products are no longer available. "
+                        "Please update your cart and try again.",
+                        extra_tags='cart_error'
+                    )
                     return redirect('store:cart')
                 
-                for cart_item in cart_items:
-                    # Check if product has enough stock
-                    if cart_item.product.quantity < cart_item.quantity and cart_item.product.track_quantity:
-                        messages.error(
-                            request,
-                            f"Sorry, we only have {cart_item.product.quantity} of {cart_item.product.name} in stock."
-                        )
-                        return redirect('store:cart')
-                    
+                # Process active cart items
+                for cart_item in active_cart_items:
                     # Create order item
                     OrderItem.objects.create(
                         order=order,
