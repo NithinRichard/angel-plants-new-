@@ -101,8 +101,7 @@
                     <input type="hidden" name="payment_method" id="payment-method" value="razorpay">
                     
                     <!-- Payment Form -->
-                    <form id="payment-form" method="post" action="{% url 'store:process_payment' %}">
-                        {% csrf_token %}
+                    <form id="payment-form" method="post" action="{% url 'store:checkout' %}">
                         {% csrf_token %}
                         <input type="hidden" name="order_id" value="{{ order.id }}">
                         <input type="hidden" name="payment_method" id="payment-method" value="razorpay">
@@ -229,19 +228,127 @@
     });
     
     // Handle form submission
-    document.getElementById('payment-form').addEventListener('submit', function(e) {
-        e.preventDefault();
+    document.addEventListener('DOMContentLoaded', function() {
+        const paymentForm = document.getElementById('payment-form');
+        if (!paymentForm) return;
+
+        paymentForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
+            
+            // Check if a payment method is selected
+            if (!paymentMethod) {
+                // Show error message
+                const errorContainer = document.createElement('div');
+                errorContainer.className = 'alert alert-danger mt-3';
+                errorContainer.innerHTML = `
+                    <i class='fas fa-exclamation-circle me-2'></i>
+                    Please select a payment method to continue.
+                `;
+                
+                // Remove any existing error messages
+                const existingError = document.querySelector('.alert-danger');
+                if (existingError) {
+                    existingError.remove();
+                }
+                
+                // Insert the error message
+                paymentForm.parentNode.insertBefore(errorContainer, paymentForm);
+                
+                // Scroll to the error message
+                errorContainer.scrollIntoView({ behavior: 'smooth' });
+                
+                // Auto-remove error after 5 seconds
+                setTimeout(() => {
+                    errorContainer.remove();
+                }, 5000);
+                
+                return;
+            }
+            
+            // Update the hidden payment method field
+            document.getElementById('payment-method').value = paymentMethod.value;
+            
+            // Show loader
+            const loader = document.getElementById('payment-loader');
+            const payButton = document.getElementById('pay-button');
+            if (loader) loader.style.display = 'block';
+            if (payButton) payButton.disabled = true;
+            
+            // Prepare form data
+            const formData = new FormData(paymentForm);
+            
+            // Add X-Requested-With header for AJAX detection
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', paymentForm.action, true);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+            
+            xhr.onload = function() {
+                if (loader) loader.style.display = 'none';
+                if (payButton) payButton.disabled = false;
+                
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        if (response.redirect_url) {
+                            window.location.href = response.redirect_url;
+                        } else if (response.razorpay) {
+                            // Handle Razorpay payment
+                            const options = {
+                                key: response.razorpay.key_id,
+                                amount: response.razorpay.amount,
+                                currency: response.razorpay.currency,
+                                name: response.razorpay.name,
+                                description: response.razorpay.description,
+                                order_id: response.razorpay.order_id,
+                                handler: function(razorpayResponse) {
+                                    window.location.href = `/payment/success/?order_id=${response.order_id}&payment_id=${razorpayResponse.razorpay_payment_id}&signature=${razorpayResponse.razorpay_signature}`;
+                                },
+                                prefill: {
+                                    name: '{{ user.get_full_name|default:user.username }}',
+                                    email: '{{ user.email }}',
+                                    contact: '{{ user.profile.phone|default:"" }}'
+                                },
+                                theme: { color: '#28a745' },
+                                modal: {
+                                    ondismiss: function() {
+                                        if (loader) loader.style.display = 'none';
+                                        if (payButton) payButton.disabled = false;
+                                    }
+                                }
+                            };
+                            
+                            const rzp = new Razorpay(options);
+                            rzp.open();
+                        }
+                    } else {
+                        throw new Error(response.message || 'An error occurred while processing your request.');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    showError(error.message || 'An error occurred. Please try again or contact support.');
+                }
+            };
+            
+            xhr.onerror = function() {
+                if (loader) loader.style.display = 'none';
+                if (payButton) payButton.disabled = false;
+                showError('Network error. Please check your connection and try again.');
+            };
+            
+            xhr.send(formData);
+        });
         
-        const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
-        
-        // Check if a payment method is selected
-        if (!paymentMethod) {
-            // Show error message
+        // Function to show error messages
+        function showError(message) {
             const errorContainer = document.createElement('div');
             errorContainer.className = 'alert alert-danger mt-3';
             errorContainer.innerHTML = `
                 <i class='fas fa-exclamation-circle me-2'></i>
-                Please select a payment method to continue.
+                ${message}
             `;
             
             // Remove any existing error messages
@@ -251,103 +358,16 @@
             }
             
             // Insert the error message
-            const form = document.getElementById('payment-form');
-            form.parentNode.insertBefore(errorContainer, form);
-            
-            // Scroll to the error message
-            errorContainer.scrollIntoView({ behavior: 'smooth' });
-            return;
-        }
-        
-        const selectedMethod = paymentMethod.value;
-        const orderId = '{{ order.id }}';
-        
-        // Update the hidden input with the selected payment method
-        document.getElementById('payment-method').value = selectedMethod;
-        
-        if (selectedMethod === 'razorpay') {
-            // Show loader
-            document.getElementById('payment-loader').style.display = 'block';
-            document.getElementById('pay-button').disabled = true;
-            
-            // Create Razorpay order
-            const formData = new FormData();
-            formData.append('order_id', orderId);
-            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
-            
-            fetch('{% url "store:create_razorpay_order" %}', {
-                method: 'POST',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRFToken': '{{ csrf_token }}'
-                },
-                body: formData
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.error) {
-                    throw new Error(data.error);
-                }
-                
-                // Open Razorpay checkout
-                const options = {
-                    key: data.key,
-                    amount: data.amount,
-                    currency: data.currency,
-                    name: 'Angel\'s Plants',
-                    description: `Order #${orderId}`,
-                    order_id: data.id,
-                    handler: function(response) {
-                        // Handle successful payment
-                        window.location.href = `/payment/success/?order_id=${orderId}&payment_id=${response.razorpay_payment_id}&signature=${response.razorpay_signature}`;
-                    },
-                    prefill: {
-                        name: '{{ user.get_full_name|default:user.username }}',
-                        email: '{{ user.email }}',
-                        contact: '{{ user.profile.phone|default:"" }}'
-                    },
-                    theme: {
-                        color: '#28a745'
-                    },
-                    modal: {
-                        ondismiss: function() {
-                            // Handle modal dismissal
-                            document.getElementById('payment-loader').style.display = 'none';
-                            document.getElementById('pay-button').disabled = false;
-                        }
-                    }
-                };
-                
-                const rzp = new Razorpay(options);
-                rzp.open();
-            })
-            .catch(error => {
-                console.error('Payment Error:', error);
-                // Show a more user-friendly error message
-                const errorContainer = document.createElement('div');
-                errorContainer.className = 'alert alert-danger mt-3';
-                errorContainer.innerHTML = `
-                    <i class='fas fa-exclamation-circle me-2'></i>
-                    Failed to process payment: ${error.message || 'Please try again or contact support.'}
-                `;
-                
-                const form = document.getElementById('payment-form');
-                form.parentNode.insertBefore(errorContainer, form.nextSibling);
-                
-                // Scroll to the error message
+            const paymentForm = document.getElementById('payment-form');
+            if (paymentForm) {
+                paymentForm.parentNode.insertBefore(errorContainer, paymentForm.nextSibling);
                 errorContainer.scrollIntoView({ behavior: 'smooth' });
                 
-                document.getElementById('payment-loader').style.display = 'none';
-                document.getElementById('pay-button').disabled = false;
-                
-                // Remove error message after 10 seconds
+                // Auto-remove error after 5 seconds
                 setTimeout(() => {
                     errorContainer.remove();
-                }, 10000);
-            });
-        } else {
-            // For Cash on Delivery, submit the form directly
-            this.submit();
+                }, 5000);
+            }
         }
     });
 </script>
