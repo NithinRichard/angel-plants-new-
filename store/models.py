@@ -17,6 +17,7 @@ from django.db.models.functions import Coalesce
 from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from django.utils import timezone
+from django.db import transaction
 from PIL import Image
 
 User = get_user_model()
