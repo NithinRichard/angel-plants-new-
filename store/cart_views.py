@@ -36,15 +36,20 @@ def add_to_cart(request, product_id):
                     # If we still can't get a cart, re-raise the original error
                     raise e
         
-        # Get or create cart item
-        cart_item, created = CartItem.objects.get_or_create(
-            cart=cart,
-            product=product,
-            defaults={'quantity': 0, 'price': product.price}
-        )
-        
-        # Update quantity by the specified amount
-        cart_item.increase_quantity(quantity)
+        # Check if item already exists in cart
+        try:
+            cart_item = CartItem.objects.get(cart=cart, product=product)
+            # Item exists, update quantity
+            cart_item.increase_quantity(quantity)
+            cart_item.save()
+        except CartItem.DoesNotExist:
+            # Item doesn't exist, create new with quantity
+            cart_item = CartItem.objects.create(
+                cart=cart,
+                product=product,
+                quantity=quantity,
+                price=product.price
+            )
         
         # Prepare response data
         response_data = {
