@@ -2467,13 +2467,13 @@ class CheckoutView(LoginRequiredMixin, View):
                     'last_name': request.user.last_name or '',
                     'email': request.user.email,
                     'phone': getattr(request.user.profile, 'phone', ''),
-                    'total_amount': cart.get_total_cost()
+                    'total_amount': cart.total
                 }
             )
             
             if not created:
                 # Update existing order with latest cart total
-                order.total_amount = cart.get_total_cost()
+                order.total_amount = cart.total
                 order.save(update_fields=['total_amount', 'updated_at'])
             
             # Create or update order items
