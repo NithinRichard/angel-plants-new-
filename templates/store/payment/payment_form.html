@@ -101,44 +101,91 @@
                     <input type="hidden" name="payment_method" id="payment-method" value="razorpay">
                     
                     <!-- Payment Form -->
-                    <form id="payment-form" method="post" action="{% url 'store:checkout' %}">
+                    <form id="payment-form" method="post" action="{% url 'store:payment' pk=order.id %}">
                         {% csrf_token %}
                         <input type="hidden" name="order_id" value="{{ order.id }}">
-                        <input type="hidden" name="payment_method" id="payment-method" value="razorpay">
+                        <input type="hidden" name="payment_method" id="payment-method" value="{{ order.payment_method|default:'razorpay' }}">
                         
-                        <div id="razorpay-payment-form">
+                        <!-- Payment method selection -->
+                        <div class="mb-4">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="payment_option" id="razorpay-option" value="razorpay" {% if order.payment_method != 'cash_on_delivery' %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="razorpay-option">
+                                    Credit/Debit Card, UPI, Net Banking
+                                </label>
+                            </div>
+                            
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="radio" name="payment_option" id="cod-option" value="cash_on_delivery" {% if order.payment_method == 'cash_on_delivery' %}checked{% endif %}>
+                                <label class="form-check-label fw-bold" for="cod-option">
+                                    Cash on Delivery
+                                </label>
+                            </div>
+                        </div>
+                        
+                        <!-- Razorpay payment form (initially shown) -->
+                        <div id="razorpay-payment-form" class="payment-method-form" {% if order.payment_method == 'cash_on_delivery' %}style="display: none;"{% endif %}>
+                            <div class="alert alert-info">
+                                <i class="fas fa-lock me-2"></i> Secure payment processed by Razorpay
+                            </div>
                             <div class="mb-3">
                                 <label for="card-number" class="form-label">Card Number</label>
                                 <div class="input-group">
                                     <span class="input-group-text"><i class="fas fa-credit-card"></i></span>
-                                    <input type="text" class="form-control" id="card-number" placeholder="1234 5678 9012 3456" required>
+                                    <input type="text" class="form-control" id="card-number" placeholder="1234 5678 9012 3456" data-bs-toggle="tooltip" title="Enter your 16-digit card number">
                                 </div>
                             </div>
                             
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="card-expiry" class="form-label">Expiry Date</label>
-                                    <input type="text" class="form-control" id="card-expiry" placeholder="MM/YY" required>
+                                    <input type="text" class="form-control" id="card-expiry" placeholder="MM/YY">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label for="card-cvv" class="form-label">CVV</label>
-                                    <input type="text" class="form-control" id="card-cvv" placeholder="123" required>
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                                        <input type="text" class="form-control" id="card-cvv" placeholder="123" maxlength="4">
+                                    </div>
                                 </div>
                             </div>
                             
                             <div class="mb-3">
                                 <label for="card-name" class="form-label">Name on Card</label>
-                                <input type="text" class="form-control" id="card-name" placeholder="John Doe" required>
+                                <input type="text" class="form-control" id="card-name" placeholder="John Doe">
                             </div>
+                        </div>
+                        
+                        <!-- Cash on Delivery message (initially hidden) -->
+                        <div id="cod-message" class="alert alert-warning payment-method-form" {% if order.payment_method != 'cash_on_delivery' %}style="display: none;"{% endif %}>
+                            <i class="fas fa-info-circle me-2"></i>
+                            You'll pay in cash when your order is delivered. Additional charges may apply.
                         </div>
                         
                         <div class="d-grid gap-2 mt-4">
                             <button type="submit" class="btn btn-success btn-lg" id="pay-button">
-                                <i class="fas fa-lock me-2"></i>Pay ₹{{ order.total_amount }}
+                                <i class="fas fa-lock me-2"></i>
+                                <span id="pay-button-text">
+                                    {% if order.payment_method == 'cash_on_delivery' %}
+                                        Place Order (Cash on Delivery)
+                                    {% else %}
+                                        Pay ₹{{ order.total_amount|floatformat:2 }}
+                                    {% endif %}
+                                </span>
                             </button>
+                            <div class="text-center mt-2">
+                                <small class="text-muted">
+                                    <i class="fas fa-lock me-1"></i> Secure SSL Encryption
+                                </small>
+                            </div>
                         </div>
                         
-                        <div class="loader" id="payment-loader"></div>
+                        <div class="loader text-center my-4" id="payment-loader" style="display: none;">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">Processing...</span>
+                            </div>
+                            <p class="mt-2">Processing your payment...</p>
+                        </div>
                     </form>
                 </div>
             </div>
@@ -206,71 +253,69 @@
 {% block extra_js %}
 <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <script>
-    // Select payment method
-    document.querySelectorAll('input[name="paymentMethod"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            const selectedMethod = this.value;
-            document.getElementById('payment-method').value = selectedMethod;
-            
-            // Update UI
-            document.querySelectorAll('.payment-method').forEach(method => {
-                method.classList.remove('selected');
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Toggle between payment methods
+        const razorpayOption = document.getElementById('razorpay-option');
+        const codOption = document.getElementById('cod-option');
+        const razorpayForm = document.getElementById('razorpay-payment-form');
+        const codMessage = document.getElementById('cod-message');
+        const paymentMethodInput = document.getElementById('payment-method');
+        const payButtonText = document.getElementById('pay-button-text');
+        
+        function updatePaymentUI(method) {
+            if (method === 'razorpay') {
+                razorpayForm.style.display = 'block';
+                codMessage.style.display = 'none';
+                payButtonText.textContent = `Pay ₹{{ order.total_amount|floatformat:2 }}`;
+            } else {
+                razorpayForm.style.display = 'none';
+                codMessage.style.display = 'block';
+                payButtonText.textContent = 'Place Order (Cash on Delivery)';
+            }
+            paymentMethodInput.value = method;
+        }
+        
+        // Handle payment method selection
+        if (razorpayOption && codOption) {
+            razorpayOption.addEventListener('change', function() {
+                if (this.checked) {
+                    updatePaymentUI('razorpay');
+                }
             });
             
-            if (selectedMethod === 'razorpay') {
-                document.getElementById('razorpay-option').classList.add('selected');
-                document.getElementById('razorpay-payment-form').style.display = 'block';
-            } else {
-                document.getElementById('cod-option').classList.add('selected');
-                document.getElementById('razorpay-payment-form').style.display = 'none';
-            }
-        });
-    });
-    
-    // Handle form submission
-    document.addEventListener('DOMContentLoaded', function() {
+            codOption.addEventListener('change', function() {
+                if (this.checked) {
+                    updatePaymentUI('cash_on_delivery');
+                }
+            });
+        }
+        
+        // Handle form submission
         const paymentForm = document.getElementById('payment-form');
         if (!paymentForm) return;
-
+        
         paymentForm.addEventListener('submit', function(e) {
             e.preventDefault();
             
-            const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
+            // Get the selected payment method
+            const selectedMethod = document.querySelector('input[name="payment_option"]:checked');
             
-            // Check if a payment method is selected
-            if (!paymentMethod) {
-                // Show error message
-                const errorContainer = document.createElement('div');
-                errorContainer.className = 'alert alert-danger mt-3';
-                errorContainer.innerHTML = `
-                    <i class='fas fa-exclamation-circle me-2'></i>
-                    Please select a payment method to continue.
-                `;
-                
-                // Remove any existing error messages
-                const existingError = document.querySelector('.alert-danger');
-                if (existingError) {
-                    existingError.remove();
-                }
-                
-                // Insert the error message
-                paymentForm.parentNode.insertBefore(errorContainer, paymentForm);
-                
-                // Scroll to the error message
-                errorContainer.scrollIntoView({ behavior: 'smooth' });
-                
-                // Auto-remove error after 5 seconds
-                setTimeout(() => {
-                    errorContainer.remove();
-                }, 5000);
-                
+            // Validate payment method selection
+            if (!selectedMethod) {
+                showError('Please select a payment method to continue.');
                 return;
             }
             
-            // Update the hidden payment method field
-            document.getElementById('payment-method').value = paymentMethod.value;
+            const paymentMethod = selectedMethod.value;
+            paymentMethodInput.value = paymentMethod;
             
-            // Show loader
+            // Show loading state
             const loader = document.getElementById('payment-loader');
             const payButton = document.getElementById('pay-button');
             if (loader) loader.style.display = 'block';
@@ -279,67 +324,61 @@
             // Prepare form data
             const formData = new FormData(paymentForm);
             
-            // Add X-Requested-With header for AJAX detection
-            const xhr = new XMLHttpRequest();
-            xhr.open('POST', paymentForm.action, true);
-            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
-            xhr.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
-            
-            xhr.onload = function() {
-                if (loader) loader.style.display = 'none';
-                if (payButton) payButton.disabled = false;
-                
-                try {
-                    const response = JSON.parse(xhr.responseText);
-                    
-                    if (xhr.status >= 200 && xhr.status < 300) {
-                        if (response.redirect_url) {
-                            window.location.href = response.redirect_url;
-                        } else if (response.razorpay) {
-                            // Handle Razorpay payment
-                            const options = {
-                                key: response.razorpay.key_id,
-                                amount: response.razorpay.amount,
-                                currency: response.razorpay.currency,
-                                name: response.razorpay.name,
-                                description: response.razorpay.description,
-                                order_id: response.razorpay.order_id,
-                                handler: function(razorpayResponse) {
-                                    window.location.href = `/payment/success/?order_id=${response.order_id}&payment_id=${razorpayResponse.razorpay_payment_id}&signature=${razorpayResponse.razorpay_signature}`;
-                                },
-                                prefill: {
-                                    name: '{{ user.get_full_name|default:user.username }}',
-                                    email: '{{ user.email }}',
-                                    contact: '{{ user.profile.phone|default:"" }}'
-                                },
-                                theme: { color: '#28a745' },
-                                modal: {
-                                    ondismiss: function() {
-                                        if (loader) loader.style.display = 'none';
-                                        if (payButton) payButton.disabled = false;
-                                    }
-                                }
-                            };
-                            
-                            const rzp = new Razorpay(options);
-                            rzp.open();
+            // Submit form via AJAX
+            fetch(paymentForm.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.redirect_url) {
+                    // Redirect to success page
+                    window.location.href = data.redirect_url;
+                } else if (data.razorpay) {
+                    // Handle Razorpay payment
+                    const options = {
+                        key: data.razorpay.key_id,
+                        amount: data.razorpay.amount,
+                        currency: data.razorpay.currency,
+                        name: data.razorpay.name,
+                        description: data.razorpay.description,
+                        order_id: data.razorpay.order_id,
+                        handler: function(response) {
+                            // Handle successful payment
+                            window.location.href = `/payment/success/?order_id=${data.order_id}&payment_id=${response.razorpay_payment_id}&signature=${response.razorpay_signature}`;
+                        },
+                        prefill: {
+                            name: '{{ user.get_full_name|default:user.username }}',
+                            email: '{{ user.email }}',
+                            contact: '{{ user.profile.phone|default:"" }}'
+                        },
+                        theme: { color: '#28a745' },
+                        modal: {
+                            ondismiss: function() {
+                                if (loader) loader.style.display = 'none';
+                                if (payButton) payButton.disabled = false;
+                            }
                         }
-                    } else {
-                        throw new Error(response.message || 'An error occurred while processing your request.');
-                    }
-                } catch (error) {
-                    console.error('Error:', error);
-                    showError(error.message || 'An error occurred. Please try again or contact support.');
+                    };
+                    
+                    const rzp = new Razorpay(options);
+                    rzp.open();
+                } else {
+                    throw new Error(data.message || 'An error occurred while processing your request.');
                 }
-            };
-            
-            xhr.onerror = function() {
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showError(error.message || 'An error occurred. Please try again or contact support.');
+            })
+            .finally(() => {
                 if (loader) loader.style.display = 'none';
                 if (payButton) payButton.disabled = false;
-                showError('Network error. Please check your connection and try again.');
-            };
-            
-            xhr.send(formData);
+            });
         });
         
         // Function to show error messages
@@ -365,7 +404,9 @@
                 
                 // Auto-remove error after 5 seconds
                 setTimeout(() => {
-                    errorContainer.remove();
+                    if (document.body.contains(errorContainer)) {
+                        errorContainer.remove();
+                    }
                 }, 5000);
             }
         }

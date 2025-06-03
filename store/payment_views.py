@@ -18,19 +18,92 @@ from .payment_utils import create_razorpay_order, verify_payment_signature
 import razorpay
 razorpay_client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
 
-class PaymentView(LoginRequiredMixin, DetailView):
-    """View to handle payment page"""
-    model = Order
+class PaymentView(LoginRequiredMixin, View):
+    """View to handle payment page and form submission"""
     template_name = 'store/payment/payment_form.html'
-    context_object_name = 'order'
     
     def get_queryset(self):
         return Order.objects.filter(user=self.request.user, status__in=['pending', 'processing'])
     
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['razorpay_key'] = settings.RAZORPAY_KEY_ID
-        return context
+    def get_object(self):
+        order_id = self.kwargs.get('pk')
+        return get_object_or_404(self.get_queryset(), id=order_id)
+    
+    def get(self, request, *args, **kwargs):
+        order = self.get_object()
+        context = {
+            'order': order,
+            'razorpay_key': settings.RAZORPAY_KEY_ID
+        }
+        return render(request, self.template_name, context)
+    
+    def post(self, request, *args, **kwargs):
+        try:
+            order = self.get_object()
+            payment_method = request.POST.get('payment_method', 'razorpay')
+            
+            # Update order with payment method
+            order.payment_method = payment_method
+            order.save(update_fields=['payment_method', 'updated_at'])
+            
+            if payment_method == 'cash_on_delivery':
+                # Process cash on delivery
+                order.status = 'processing'
+                order.payment_status = True
+                order.save(update_fields=['status', 'payment_status', 'updated_at'])
+                
+                # Clear the cart
+                cart = Cart.objects.filter(user=request.user, status='active').first()
+                if cart:
+                    cart.status = 'completed'
+                    cart.save()
+                
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'redirect_url': reverse('store:payment_success')
+                    })
+                return redirect('store:payment_success')
+                
+            elif payment_method == 'razorpay':
+                # Create Razorpay order
+                razorpay_order = create_razorpay_order(
+                    amount=int(order.total_amount * 100),  # Convert to paise
+                    receipt=f'order_{order.id}'
+                )
+                
+                if not razorpay_order:
+                    raise Exception('Failed to create Razorpay order')
+                
+                # Save Razorpay order ID
+                order.razorpay_order_id = razorpay_order['id']
+                order.save(update_fields=['razorpay_order_id', 'updated_at'])
+                
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': True,
+                        'redirect_url': reverse('store:payment_success'),
+                        'razorpay': {
+                            'key_id': settings.RAZORPAY_KEY_ID,
+                            'order_id': razorpay_order['id'],
+                            'amount': razorpay_order['amount'],
+                            'currency': razorpay_order['currency'],
+                            'name': "Angel's Plant Shop",
+                            'description': f'Order #{order.order_number}'
+                        }
+                    })
+                
+                return redirect('store:payment_success')
+                
+        except Exception as e:
+            error_message = f"Payment processing failed: {str(e)}"
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': error_message
+                }, status=400)
+            messages.error(request, error_message)
+            return redirect('store:checkout')
 
 
 class CreateRazorpayOrderView(LoginRequiredMixin, View):
