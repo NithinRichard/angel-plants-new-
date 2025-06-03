@@ -23,6 +23,9 @@ from .payment_views import (
 app_name = 'store'
 
 urlpatterns = [
+    # Test URL for debugging
+    path('test-url/', lambda request: JsonResponse({'status': 'ok', 'message': 'Test URL is working!'}), name='test_url'),
+    
     # API URLs
     path('api/', include(api_urls)),
     
