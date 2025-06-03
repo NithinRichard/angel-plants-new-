@@ -44,13 +44,27 @@ def convert_cart_to_order(sender, instance, created, **kwargs):
     """
     When an order is created from a cart, update the cart status and clear its items.
     """
-    if created and hasattr(instance, 'cart'):
-        cart = instance.cart
+    if not created:
+        return
+        
+    # Get the cart safely
+    cart = getattr(instance, 'cart', None)
+    if not cart:
+        return
+        
+    try:
+        # Update cart status
         cart.status = 'converted'
         cart.save()
         
         # Clear the cart items
         cart.items.all().delete()
+    except Exception as e:
+        # Log the error but don't fail the order creation
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"Error updating cart status after order creation: {str(e)}", 
+                    exc_info=True)
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
