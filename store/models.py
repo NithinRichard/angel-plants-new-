@@ -717,7 +717,12 @@ class Cart(models.Model):
     
     def update_totals(self):
         """Update the cart's totals based on its items."""
-        self.save()
+        # Calculate new total based on items
+        new_total = self.subtotal
+        if self.total != new_total:
+            self.total = new_total
+            self.save(update_fields=['total', 'updated_at'])
+        return self.total
         
     def clear(self):
         """Remove all items from the cart."""
@@ -785,12 +790,32 @@ class CartItem(models.Model):
         self.save(update_fields=['quantity', 'updated_at'])
         return True
     
+    def clean(self):
+        """Validate the cart item before saving."""
+        if not self.product.is_active:
+            raise ValidationError({
+                'product': 'Cannot add an inactive product to cart.'
+            })
+            
+        if self.product.track_quantity and self.quantity > self.product.quantity:
+            raise ValidationError({
+                'quantity': f'Only {self.product.quantity} items available in stock.'
+            })
+    
     def save(self, *args, **kwargs):
         """Save the cart item and update the cart's updated_at timestamp."""
-        if not self.pk:  # New item being added
+        # Set price from product if not set or if it's a new item
+        if not self.pk or not hasattr(self, 'price') or not self.price:
             self.price = self.product.price
+            
+        # Validate before saving
+        self.full_clean()
+        
+        # Save the item
         super().save(*args, **kwargs)
-        self.cart.save()  # Update cart's updated_at
+        
+        # Update cart's updated_at and totals
+        self.cart.update_totals()
 
 
 class Order(models.Model):

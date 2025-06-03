@@ -1,6 +1,7 @@
 from decimal import Decimal
 import logging
 from django.db import transaction
+from django.core.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404, redirect, HttpResponseRedirect
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -1266,42 +1267,65 @@ def remove_from_cart(request, product_id):
 def add_to_cart(request, product_id, quantity=1):
     """
     Add a product to the cart or update quantity if already in cart.
-    This is a simpler view for the 'Add to Cart' button.
+    Handles both AJAX and regular form submissions.
     """
+    if request.method != 'POST':
+        return JsonResponse(
+            {'status': 'error', 'message': 'Invalid request method'}, 
+            status=405
+        )
+    
     try:
-        product = get_object_or_404(Product, id=product_id, is_active=True)
+        # Get the product or return 404
+        product = get_object_or_404(Product, id=product_id)
+        
+        # Check if product is active
+        if not product.is_active:
+            raise ValidationError('This product is no longer available.')
+        
+        # Validate quantity
+        try:
+            quantity = int(quantity)
+            if quantity < 1:
+                raise ValueError('Quantity must be at least 1')
+        except (ValueError, TypeError):
+            raise ValidationError('Invalid quantity')
+            
+        # Check stock if tracking is enabled
+        if product.track_quantity and product.quantity < quantity:
+            raise ValidationError(
+                f'Only {product.quantity} items available in stock.'
+            )
         
         # Get or create cart for the current user
-        cart, created = Cart.objects.get_or_create(
-            user=request.user,
-            status='active',
-            defaults={'status': 'active'}
-        )
-        
-        # Debug: Print cart info
-        print(f"Cart ID: {cart.id}, Created: {created}")
-        
-        # Get or create cart item
-        cart_item, created = CartItem.objects.get_or_create(
-            cart=cart,
-            product=product,
-            defaults={
-                'quantity': quantity,
-                'price': product.price
-            }
-        )
-        
-        # Debug: Print cart item info
-        print(f"CartItem ID: {cart_item.id if cart_item else 'None'}, Created: {created}")
-        print(f"Current quantity: {cart_item.quantity}, Adding: {quantity}")
-        
-        # Update quantity
-        if not created:
-            cart_item.increase_quantity(quantity)
-        cart_item.save()
-        
-        # Update cart totals
-        cart.update_totals()
+        with transaction.atomic():
+            cart, created = Cart.objects.select_for_update().get_or_create(
+                user=request.user,
+                status='active',
+                defaults={'status': 'active'}
+            )
+            
+            # Get or create cart item
+            cart_item, created = CartItem.objects.get_or_create(
+                cart=cart,
+                product=product,
+                defaults={
+                    'quantity': 0,  # Will be increased below
+                    'price': product.price
+                }
+            )
+            
+            # Update quantity
+            if created:
+                cart_item.quantity = quantity
+            else:
+                cart_item.increase_quantity(quantity)
+                
+            # This will trigger validation in save()
+            cart_item.save()
+            
+            # Update cart totals
+            cart.update_totals()
         
         # Prepare response data
         response_data = {
@@ -1316,7 +1340,7 @@ def add_to_cart(request, product_id, quantity=1):
                 'product_id': product.id,
                 'name': product.name,
                 'quantity': cart_item.quantity,
-                'price': str(product.price.quantize(Decimal('0.00'))),
+                'price': str(cart_item.price.quantize(Decimal('0.00'))),
                 'subtotal': str((cart_item.quantity * cart_item.price).quantize(Decimal('0.00')))
             }
         }
@@ -1332,21 +1356,26 @@ def add_to_cart(request, product_id, quantity=1):
         redirect_url = request.META.get('HTTP_REFERER', reverse('store:cart'))
         return redirect(redirect_url)
         
+    except ValidationError as e:
+        error_msg = str(e)
+        status_code = 400
     except Product.DoesNotExist:
         error_msg = 'Product not found.'
-        print(error_msg)
+        status_code = 404
     except Exception as e:
-        error_msg = f'An error occurred: {str(e)}'
-        print(f"Error in add_to_cart: {error_msg}")
-        import traceback
-        traceback.print_exc()
+        error_msg = 'An error occurred while adding the item to your cart.'
+        logger.exception("Error in add_to_cart")
+        status_code = 500
     
     # Handle errors
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return JsonResponse({'status': 'error', 'message': error_msg}, status=400)
+        return JsonResponse(
+            {'status': 'error', 'message': error_msg}, 
+            status=status_code
+        )
     
     messages.error(request, error_msg)
-    return redirect('store:home')
+    return redirect(request.META.get('HTTP_REFERER', reverse('store:home')))
 
 
 @require_http_methods(["POST"])
