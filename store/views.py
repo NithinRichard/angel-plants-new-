@@ -2458,24 +2458,27 @@ class CheckoutView(LoginRequiredMixin, View):
                 messages.error(request, "Your cart is empty. Add some products before checking out.")
                 return redirect('store:cart')
             
-            # Get or create order
+            # Get or create order and associate it with the cart
             order, created = Order.objects.get_or_create(
                 user=request.user,
                 status='pending',
                 payment_status=False,
+                cart=cart,  # Associate the cart with the order
                 defaults={
                     'first_name': request.user.first_name or '',
                     'last_name': request.user.last_name or '',
                     'email': request.user.email,
                     'phone': getattr(request.user.profile, 'phone', ''),
-                    'total_amount': cart.total
+                    'total_amount': cart.total,
+                    'cart': cart  # Also include in defaults for creation
                 }
             )
             
             if not created:
-                # Update existing order with latest cart total
+                # Update existing order with latest cart total and cart reference
                 order.total_amount = cart.total
-                order.save(update_fields=['total_amount', 'updated_at'])
+                order.cart = cart  # Ensure cart is always set
+                order.save(update_fields=['total_amount', 'cart', 'updated_at'])
             
             # Create or update order items
             with transaction.atomic():
