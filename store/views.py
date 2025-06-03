@@ -2469,9 +2469,8 @@ class CheckoutSuccessView(LoginRequiredMixin, View):
         # Optimize database queries
         try:
             order = Order.objects.select_related(
-                'shipping_address',
-                'billing_address',
-                'user'
+                'user',
+                'cart'
             ).prefetch_related(
                 'items',
                 'items__product',
