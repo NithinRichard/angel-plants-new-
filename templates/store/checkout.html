@@ -49,7 +49,7 @@
                         <h5 class="mb-0">Billing & Shipping Information</h5>
                     </div>
                     <div class="card-body">
-                        <form method="post" id="checkoutForm" action="{% url 'store:checkout' %}">
+                        <form method="post" id="checkout-form" action="{% url 'store:checkout' %}">
                             {% csrf_token %}
                             
                             <div class="row mb-4">
@@ -292,7 +292,11 @@
 {% block extra_js %}
 <script>
     document.addEventListener('DOMContentLoaded', function() {
-        const form = document.getElementById('checkoutForm');
+        const form = document.getElementById('checkout-form');
+        if (!form) {
+            console.error('Error: Could not find checkout form');
+            return;
+        }
         const submitBtn = document.getElementById('submit-order-btn');
         const submitBtnText = document.getElementById('submit-btn-text');
         const submitBtnSpinner = document.getElementById('submit-btn-spinner');

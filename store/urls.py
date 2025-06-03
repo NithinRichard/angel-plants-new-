@@ -4,6 +4,7 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
 from django.urls import reverse_lazy
+from django.http import JsonResponse
 from . import views
 from .api_urls import api_urlpatterns as api_urls
 
@@ -56,8 +57,8 @@ urlpatterns = [
     path('cart/remove/<int:product_id>/', remove_from_cart, name='remove_from_cart'),
     path('cart/clear/', views.ClearCartView.as_view(), name='clear_cart'),
     
-    # Checkout URLs
-    path('checkout/', views.CheckoutView.as_view(), name='checkout'),
+    # Checkout URLs - Make sure this appears before any catch-all patterns
+    path('checkout/', views.CheckoutView.as_view(), name='checkout'),  # This is the correct URL pattern
     path('checkout/success/<str:order_number>/', views.CheckoutSuccessView.as_view(), name='checkout_success'),
     path('checkout/cancel/', views.CheckoutCancelView.as_view(), name='checkout_cancel'),
     
