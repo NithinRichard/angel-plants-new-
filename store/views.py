@@ -2222,10 +2222,12 @@ class CartView(LoginRequiredMixin, View):
             
             # GST rate in India (18%)
             tax_rate = Decimal('0.18')
-            tax = cart.total * tax_rate
             
             # Get all cart items with related products
             all_items = cart.items.select_related('product').filter(product__isnull=False)
+            
+            # Debug log all items before processing
+            print(f"[DEBUG] All cart items before processing: {[(item.id, item.product.name if item.product else 'No product', item.quantity) for item in all_items]}")
             
             # Separate active and inactive items
             active_items = []
@@ -2235,17 +2237,23 @@ class CartView(LoginRequiredMixin, View):
                 if item.product and item.product.is_active:
                     # Check stock for active products
                     if item.product.track_quantity and item.quantity > item.product.quantity:
-                        messages.warning(
-                            request,
-                            f"Reduced quantity of '{item.product.name}' to available stock ({item.product.quantity}).",
-                            extra_tags='cart_warning'
-                        )
-                        item.quantity = item.product.quantity
-                        item.save()
-                        if item.quantity > 0:
+                        if item.product.quantity > 0:
+                            messages.warning(
+                                request,
+                                f"Reduced quantity of '{item.product.name}' to available stock ({item.product.quantity}).",
+                                extra_tags='cart_warning'
+                            )
+                            item.quantity = item.product.quantity
+                            item.save()
                             active_items.append(item)
                         else:
-                            item.delete()
+                            # Product is out of stock
+                            inactive_items.append(item)
+                            messages.warning(
+                                request,
+                                f"The product '{item.product.name}' is out of stock and has been removed from your cart.",
+                                extra_tags='cart_warning'
+                            )
                     else:
                         active_items.append(item)
                 else:
@@ -2259,26 +2267,26 @@ class CartView(LoginRequiredMixin, View):
             # Handle inactive products
             for item in inactive_items:
                 product_name = getattr(item.product, 'name', 'Unknown Product')
-                print(f"[WARNING] Cart {cart.id} has an inactive product: {product_name} (Product ID: {getattr(item.product, 'id', 'N/A')})")
-                messages.warning(
-                    request,
-                    f"The product '{product_name}' is no longer available and has been removed from your cart.",
-                    extra_tags='cart_warning'
-                )
+                print(f"[WARNING] Cart {cart.id} has an inactive/out-of-stock product: {product_name} (Product ID: {getattr(item.product, 'id', 'N/A')})")
+                
+                if not hasattr(request, '_dont_show_unavailable_message'):
+                    messages.warning(
+                        request,
+                        f"The product '{product_name}' is no longer available and has been removed from your cart.",
+                        extra_tags='cart_warning'
+                    )
+                
+                # Delete the item
                 item.delete()
             
-            # Update cart totals
+            # Update cart totals after removing items
             cart.update_totals()
             
             # Use only active items for the rest of the view
             items = active_items
             
-            # If no items left after filtering, redirect to cart with message
-            if not items and not messages.get_messages(request):
-                messages.info(request, "Your cart is empty. Please add some products to continue.")
-                return redirect('store:cart')
-            
             # Calculate total with shipping and tax
+            tax = (cart.total * tax_rate).quantize(Decimal('0.00'))
             total_with_shipping = (cart.total + shipping_cost + tax).quantize(Decimal('0.00'))
             
             # Prepare context with all necessary data
@@ -2286,12 +2294,12 @@ class CartView(LoginRequiredMixin, View):
                 'cart': cart,
                 'items': items,  # Only include items with active products
                 'shipping_cost': shipping_cost.quantize(Decimal('0.00')),
-                'tax': tax.quantize(Decimal('0.00')),
+                'tax': tax,
                 'total_with_shipping': total_with_shipping,
                 'is_cart_empty': len(items) == 0  # Check if there are any items
             }
             
-            print(f"[DEBUG] CartView - Rendering template with {items.count()} items")
+            print(f"[DEBUG] CartView - Rendering template with {len(items)} items")
             return render(request, 'store/cart.html', context)
             
         except Exception as e:
