@@ -2758,7 +2758,7 @@ class CheckoutView(LoginRequiredMixin, View):
         # Calculate shipping cost and tax for the confirmation page
         shipping_cost = Decimal('5.99')
         tax_rate = Decimal('0.08')  # 8% tax rate
-        tax = order.get_total_cost() * tax_rate
+        tax = order.total_amount * tax_rate
         
         # Get categories from ordered items
         ordered_categories = order.items.values_list('product__category', flat=True).distinct()
@@ -2786,7 +2786,7 @@ class CheckoutView(LoginRequiredMixin, View):
             'order': order,
             'shipping_cost': shipping_cost,
             'tax': tax.quantize(Decimal('0.01')),
-            'total_with_shipping': (order.get_total_cost() + shipping_cost + tax).quantize(Decimal('0.01')),
+            'total_with_shipping': (order.total_amount + shipping_cost + tax).quantize(Decimal('0.01')),
             'related_products': related_products[:8],  # Ensure we don't return more than 8 products
         }
         
