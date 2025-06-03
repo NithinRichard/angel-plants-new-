@@ -2199,23 +2199,43 @@ class CartView(LoginRequiredMixin, View):
             all_items = cart.items.select_related('product').filter(product__isnull=False)
             
             # Separate active and inactive items
-            active_items = all_items.filter(product__is_active=True)
-            inactive_items = all_items.filter(product__is_active=False)
+            active_items = []
+            inactive_items = []
+            
+            for item in all_items:
+                if item.product and item.product.is_active:
+                    # Check stock for active products
+                    if item.product.track_quantity and item.quantity > item.product.quantity:
+                        messages.warning(
+                            request,
+                            f"Reduced quantity of '{item.product.name}' to available stock ({item.product.quantity}).",
+                            extra_tags='cart_warning'
+                        )
+                        item.quantity = item.product.quantity
+                        item.save()
+                        if item.quantity > 0:
+                            active_items.append(item)
+                        else:
+                            item.delete()
+                    else:
+                        active_items.append(item)
+                else:
+                    inactive_items.append(item)
             
             # Debug logging
             print(f"[DEBUG] CartView - Total items: {all_items.count()}")
-            print(f"[DEBUG] CartView - Active items: {active_items.count()}")
-            print(f"[DEBUG] CartView - Inactive items: {inactive_items.count()}")
+            print(f"[DEBUG] CartView - Active items: {len(active_items)}")
+            print(f"[DEBUG] CartView - Inactive items: {len(inactive_items)}")
             
-            # Show warning for inactive products
+            # Handle inactive products
             for item in inactive_items:
-                print(f"[WARNING] Cart {cart.id} has an inactive product: {item.product.name} (Product ID: {item.product.id})")
+                product_name = getattr(item.product, 'name', 'Unknown Product')
+                print(f"[WARNING] Cart {cart.id} has an inactive product: {product_name} (Product ID: {getattr(item.product, 'id', 'N/A')})")
                 messages.warning(
                     request,
-                    f"The product '{item.product.name}' is no longer available and has been removed from your cart.",
+                    f"The product '{product_name}' is no longer available and has been removed from your cart.",
                     extra_tags='cart_warning'
                 )
-                # Remove inactive items from cart
                 item.delete()
             
             # Update cart totals
@@ -2223,6 +2243,11 @@ class CartView(LoginRequiredMixin, View):
             
             # Use only active items for the rest of the view
             items = active_items
+            
+            # If no items left after filtering, redirect to cart with message
+            if not items and not messages.get_messages(request):
+                messages.info(request, "Your cart is empty. Please add some products to continue.")
+                return redirect('store:cart')
             
             # Calculate total with shipping and tax
             total_with_shipping = (cart.total + shipping_cost + tax).quantize(Decimal('0.00'))
@@ -2465,34 +2490,53 @@ class CheckoutView(LoginRequiredMixin, View):
     redirect_field_name = 'next'
     def get(self, request, *args, **kwargs):
         try:
-            # First check if there's an active cart with items
-            cart = Cart.objects.filter(user=request.user, status='active').first()
-            
-            if not cart or not cart.items.exists():
-                messages.error(request, "Your cart is empty. Add some products before checking out.")
-                return redirect('store:cart')
-            
-            # Get or create order and associate it with the cart
-            order, created = Order.objects.get_or_create(
-                user=request.user,
-                status='pending',
-                payment_status=False,
-                cart=cart,  # Associate the cart with the order
-                defaults={
-                    'first_name': request.user.first_name or '',
-                    'last_name': request.user.last_name or '',
-                    'email': request.user.email,
-                    'phone': getattr(request.user.profile, 'phone', ''),
-                    'total_amount': cart.total,
-                    'cart': cart  # Also include in defaults for creation
-                }
-            )
-            
-            if not created:
-                # Update existing order with latest cart total and cart reference
-                order.total_amount = cart.total
-                order.cart = cart  # Ensure cart is always set
-                order.save(update_fields=['total_amount', 'cart', 'updated_at'])
+            with transaction.atomic():
+                # Lock the cart to prevent race conditions
+                cart = Cart.objects.select_for_update().filter(
+                    user=request.user, 
+                    status='active'
+                ).first()
+                
+                if not cart:
+                    messages.error(request, "No active cart found. Please add some products to your cart first.")
+                    return redirect('store:cart')
+                
+                # Get cart items with product information
+                cart_items = cart.items.select_related('product').filter(product__isnull=False)
+                
+                if not cart_items.exists():
+                    messages.error(request, "Your cart is empty. Please add some products before checking out.")
+                    return redirect('store:cart')
+                
+                # Check stock for all items before proceeding
+                for item in cart_items:
+                    if item.product.track_quantity and item.product.quantity < item.quantity:
+                        messages.error(
+                            request,
+                            f"Sorry, we only have {item.product.quantity} of '{item.product.name}' in stock. "
+                            f"Please update your cart and try again."
+                        )
+                        return redirect('store:cart')
+                
+                # Create or update order
+                order, created = Order.objects.get_or_create(
+                    user=request.user,
+                    status='pending',
+                    payment_status=False,
+                    cart=cart,
+                    defaults={
+                        'first_name': request.user.first_name or '',
+                        'last_name': request.user.last_name or '',
+                        'email': request.user.email,
+                        'phone': getattr(request.user.profile, 'phone', ''),
+                        'total_amount': cart.total
+                    }
+                )
+                
+                if not created:
+                    order.total_amount = cart.total
+                    order.cart = cart
+                    order.save(update_fields=['total_amount', 'cart', 'updated_at'])
             
             # Create or update order items
             with transaction.atomic():
