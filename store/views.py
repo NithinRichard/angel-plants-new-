@@ -2486,13 +2486,33 @@ class CheckoutView(LoginRequiredMixin, View):
                 order.items.all().delete()
                 
                 # Add new items from cart
-                for cart_item in cart.items.all():
+                cart_items = cart.items.select_related('product').filter(product__is_active=True)
+                
+                if not cart_items.exists():
+                    messages.error(request, "Your cart contains no active products. Please update your cart and try again.")
+                    return redirect('store:cart')
+                
+                for cart_item in cart_items:
+                    # Check if product has enough stock
+                    if cart_item.product.quantity < cart_item.quantity and cart_item.product.track_quantity:
+                        messages.error(
+                            request,
+                            f"Sorry, we only have {cart_item.product.quantity} of {cart_item.product.name} in stock."
+                        )
+                        return redirect('store:cart')
+                    
+                    # Create order item
                     OrderItem.objects.create(
                         order=order,
                         product=cart_item.product,
-                        price=cart_item.product.price,
+                        price=cart_item.price,  # Use the price from cart item
                         quantity=cart_item.quantity
                     )
+                    
+                    # Update product stock if tracking is enabled
+                    if cart_item.product.track_quantity:
+                        cart_item.product.quantity -= cart_item.quantity
+                        cart_item.product.save(update_fields=['quantity'])
             
             # Create or update payment record
             payment, payment_created = Payment.objects.get_or_create(
