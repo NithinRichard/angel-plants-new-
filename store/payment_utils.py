@@ -25,7 +25,7 @@ def create_razorpay_order(amount, currency='INR', receipt=None, notes=None):
     Create a Razorpay order
     
     Args:
-        amount (Decimal): Order amount in INR
+        amount (Decimal or str): Order amount in INR
         currency (str, optional): Currency code. Defaults to 'INR'.
         receipt (str, optional): Receipt ID. If not provided, a random one will be generated.
         notes (dict, optional): Additional notes to be added to the order.
@@ -34,24 +34,43 @@ def create_razorpay_order(amount, currency='INR', receipt=None, notes=None):
         dict: Razorpay order details or None if failed
     """
     try:
+        # Validate input
+        if not amount or (isinstance(amount, (str, int, float)) and float(amount) <= 0):
+            logger.error(f"Invalid amount: {amount}")
+            return None
+            
         # Convert amount to paise (smallest currency unit for INR)
-        amount_in_paise = int(Decimal(str(amount)) * 100)
-        
-        if amount_in_paise < 100:  # Minimum amount for Razorpay is 1 INR (100 paise)
-            logger.error(f"Amount too low: {amount_in_paise} paise")
+        try:
+            amount_decimal = Decimal(str(amount))
+            amount_in_paise = int(amount_decimal * 100)
+            
+            # Validate amount
+            if amount_in_paise < 100:  # Minimum amount for Razorpay is 1 INR (100 paise)
+                logger.error(f"Amount too low: {amount_in_paise} paise")
+                return None
+                
+            if amount_in_paise > 50000000:  # 500,000 INR maximum
+                logger.error(f"Amount too high: {amount_in_paise} paise")
+                return None
+                
+        except (ValueError, TypeError, decimal.InvalidOperation) as e:
+            logger.error(f"Invalid amount format: {amount}, error: {str(e)}")
             return None
             
         # Prepare order data
         order_data = {
             'amount': amount_in_paise,
-            'currency': currency,
+            'currency': currency.upper(),
             'payment_capture': 1,  # Auto capture payment
             'notes': notes or {}
         }
         
         # Add receipt if provided
         if receipt:
-            order_data['receipt'] = receipt
+            order_data['receipt'] = str(receipt)[:40]  # Max 40 chars for receipt ID
+        # Add timestamp to notes if not provided
+        if 'timestamp' not in order_data['notes']:
+            order_data['notes']['timestamp'] = timezone.now().isoformat()
             
         logger.info(f"Creating Razorpay order with data: {order_data}")
         
@@ -81,19 +100,24 @@ def verify_payment_signature(razorpay_order_id, razorpay_payment_id, razorpay_si
     Returns:
         bool: True if signature is valid, False otherwise
     """
-    try:
-        if not all([razorpay_order_id, razorpay_payment_id, razorpay_signature]):
-            logger.error("Missing required parameters for signature verification")
-            return False
-            
-        params_dict = {
-            'razorpay_order_id': razorpay_order_id,
-            'razorpay_payment_id': razorpay_payment_id,
-            'razorpay_signature': razorpay_signature
-        }
+    if not all([razorpay_order_id, razorpay_payment_id, razorpay_signature]):
+        logger.error("Missing required parameters for signature verification")
+        return False
         
-        logger.debug(f"Verifying payment signature with params: {params_dict}")
-        is_valid = client.utility.verify_payment_signature(params_dict)
+    try:
+        # Create the signature payload
+        payload = f"{razorpay_order_id}|{razorpay_payment_id}"
+        
+        # Generate the expected signature
+        key = settings.RAZORPAY_KEY_SECRET.encode('utf-8')
+        generated_signature = hmac.new(
+            key,
+            payload.encode('utf-8'),
+            sha256
+        ).hexdigest()
+        
+        # Compare the signatures in a secure way
+        is_valid = hmac.compare_digest(generated_signature, razorpay_signature)
         
         if not is_valid:
             logger.warning(f"Invalid signature for order {razorpay_order_id}")

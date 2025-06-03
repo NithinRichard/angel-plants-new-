@@ -72,47 +72,76 @@ class CreateRazorpayOrderView(LoginRequiredMixin, View):
 @csrf_exempt
 def payment_webhook(request):
     """Handle Razorpay webhook"""
-    if request.method == 'POST':
+    if request.method != 'POST':
+        return HttpResponseBadRequest("Invalid request method")
+    
+    try:
+        # Get webhook payload
+        payload = request.body.decode('utf-8')
+        received_signature = request.headers.get('X-Razorpay-Signature', '')
+        
+        # Verify the webhook signature
         try:
-            # Get webhook payload
-            payload = json.loads(request.body)
+            razorpay_client.utility.verify_webhook_signature(
+                payload,
+                received_signature,
+                settings.RAZORPAY_WEBHOOK_SECRET
+            )
+        except Exception as e:
+            logger.error(f"Webhook signature verification failed: {str(e)}")
+            return HttpResponseBadRequest("Invalid signature")
+        
+        # Parse the payload
+        try:
+            payload_data = json.loads(payload)
+        except json.JSONDecodeError:
+            return HttpResponseBadRequest("Invalid JSON payload")
+        
+        # Handle different webhook events
+        event = payload_data.get('event')
+        
+        if event == 'payment.captured':
+            # Handle successful payment
+            payment_data = payload_data.get('payload', {}).get('payment', {}) if 'payload' in payload_data else {}
+            payment_id = payment_data.get('id')
+            order_id = payment_data.get('notes', {}).get('order_id')
             
-            # Verify the webhook signature (optional but recommended)
-            received_signature = request.headers.get('X-Razorpay-Signature', '')
+            if not order_id:
+                logger.error(f"No order_id found in payment data: {payment_data}")
+                return HttpResponseBadRequest("No order_id in payment data")
             
-            # Verify the signature
-            # Note: In production, verify the webhook signature
-            # client.utility.verify_webhook_signature(payload, signature, settings.RAZORPAY_WEBHOOK_SECRET)
-            
-            # Handle different webhook events
-            event = payload.get('event')
-            
-            if event == 'payment.captured':
-                # Handle successful payment
-                payment_data = payload.get('payload', {}).get('payment', {})
-                order_id = payment_data.get('notes', {}).get('order_id')
-                
-                if order_id:
-                    order = get_object_or_404(Order, id=order_id)
-                    order.status = 'completed'
-                    order.save()
-                    
-                    # Create payment record
-                    Payment.objects.create(
-                        order=order,
-                        payment_id=payment_data.get('id'),
-                        amount=Decimal(payment_data.get('amount', 0)) / 100,  # Convert back to rupees
-                        payment_method=payment_data.get('method'),
-                        status=payment_data.get('status'),
-                        raw_data=json.dumps(payment_data)
-                    )
+            try:
+                with transaction.atomic():
+                    order = Order.objects.select_for_update().get(id=order_id)
+                    if order.payment_status != 'completed':  # Prevent duplicate processing
+                        order.status = 'processing'  # or 'completed' based on your workflow
+                        order.payment_status = True
+                        order.payment_id = payment_id
+                        order.save()
+                        
+                        # Create payment record
+                        Payment.objects.create(
+                            order=order,
+                            payment_id=payment_data.get('id'),
+                            amount=Decimal(payment_data.get('amount', 0)) / 100,  # Convert back to rupees
+                            payment_method=payment_data.get('method', 'card'),
+                            status=payment_data.get('status', 'captured'),
+                            raw_data=json.dumps(payment_data)
+                        )
+            except Order.DoesNotExist:
+                logger.error(f"Order not found: {order_id}")
+                return HttpResponseBadRequest("Order not found")
+            except Exception as e:
+                logger.error(f"Error processing payment: {str(e)}")
+                return HttpResponseBadRequest(f"Error processing payment: {str(e)}")
             
             return JsonResponse({'status': 'success'})
-            
-        except Exception as e:
-            return JsonResponse({'error': str(e)}, status=400)
-    
-    return JsonResponse({'error': 'Invalid request method'}, status=405)
+        
+        return JsonResponse({'status': 'ignored', 'event': event})
+        
+    except Exception as e:
+        logger.error(f"Error in webhook: {str(e)}")
+        return HttpResponseBadRequest("Error processing webhook")
 
 
 class PaymentSuccessView(LoginRequiredMixin, View):
@@ -124,59 +153,77 @@ class PaymentSuccessView(LoginRequiredMixin, View):
         signature = request.GET.get('signature')
         
         if not all([order_id, payment_id, signature]):
-            return HttpResponseBadRequest("Missing required parameters")
+            messages.error(request, "Missing required payment parameters.")
+            return redirect('store:checkout')
         
         try:
-            # Get the order
-            order = get_object_or_404(Order, razorpay_order_id=order_id, user=request.user)
-            
-            # Verify the payment signature
-            if not verify_payment_signature(order_id, payment_id, signature):
-                return HttpResponseBadRequest("Invalid payment signature")
-            
-            # Update order status
+            # Get the order with select_for_update to prevent race conditions
             with transaction.atomic():
-                order.status = 'processing'  # or 'completed' based on your workflow
-                order.payment_status = True
-                order.payment_id = payment_id
-                order.payment_signature = signature
-                order.save()
-                
-                # Create payment record
-                Payment.objects.create(
-                    order=order,
-                    payment_id=payment_id,
-                    amount=order.total_amount,
-                    payment_method='razorpay',
-                    status='captured',
-                    raw_data=json.dumps({
-                        'order_id': order_id,
-                        'payment_id': payment_id,
-                        'signature': signature
-                    })
+                order = Order.objects.select_for_update().get(
+                    razorpay_order_id=order_id, 
+                    user=request.user,
+                    status__in=['pending', 'processing']
                 )
                 
-                # Clear the cart after successful payment
-                try:
-                    cart = Cart.objects.get(user=request.user)
-                    cart.items.all().delete()
-                except Cart.DoesNotExist:
-                    pass
+                # Verify the payment signature
+                if not verify_payment_signature(order_id, payment_id, signature):
+                    messages.error(request, "Invalid payment signature. Please contact support.")
+                    return redirect('store:payment_failed', order_id=order.id)
                 
-            # Render success template with order and payment details
-            return render(request, 'store/payment/payment_success.html', {
-                'order': order,
-                'payment': {
-                    'payment_id': payment_id,
-                    'amount': order.total_amount,
-                    'status': 'captured'
-                }
-            })
+                # Only update if not already processed
+                if order.payment_status != 'completed':
+                    # Update order status
+                    order.status = 'processing'  # or 'completed' based on your workflow
+                    order.payment_status = True
+                    order.payment_id = payment_id
+                    order.payment_signature = signature
+                    order.payment_date = timezone.now()
+                    order.save()
+                    
+                    # Create payment record
+                    Payment.objects.create(
+                        order=order,
+                        payment_id=payment_id,
+                        amount=order.total_amount,
+                        payment_method='razorpay',
+                        status='captured',
+                        raw_data=json.dumps({
+                            'order_id': order_id,
+                            'payment_id': payment_id,
+                            'signature': signature,
+                            'timestamp': timezone.now().isoformat()
+                        })
+                    )
+                    
+                    # Clear the cart after successful payment
+                    Cart.objects.filter(user=request.user).delete()
+                    
+                    # Send order confirmation email (you can implement this)
+                    try:
+                        # send_order_confirmation_email(order)
+                        pass
+                    except Exception as e:
+                        logger.error(f"Failed to send order confirmation email: {str(e)}")
+                
+                # Render success template with order and payment details
+                return render(request, 'store/payment/payment_success.html', {
+                    'order': order,
+                    'payment': {
+                        'payment_id': payment_id,
+                        'amount': order.total_amount,
+                        'status': 'captured',
+                        'date': order.payment_date
+                    }
+                })
+                
+        except Order.DoesNotExist:
+            logger.error(f"Order not found or already processed: {order_id}")
+            messages.error(request, "Order not found or already processed.")
+            return redirect('store:home')
             
         except Exception as e:
-            # Log the error
-            print(f"Error processing payment success: {str(e)}")
-            messages.error(request, "There was an error processing your payment. Please contact support.")
+            logger.error(f"Error processing payment success: {str(e)}", exc_info=True)
+            messages.error(request, "There was an error processing your payment. Our team has been notified.")
             return redirect('store:payment_failed', order_id=order_id if 'order_id' in locals() else None)
 
 

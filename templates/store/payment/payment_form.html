@@ -237,13 +237,17 @@
             document.getElementById('pay-button').disabled = true;
             
             // Create Razorpay order
+            const formData = new FormData();
+            formData.append('order_id', orderId);
+            formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+            
             fetch('{% url "store:create_razorpay_order" %}', {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded',
-                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': '{{ csrf_token }}'
                 },
-                body: `order_id=${orderId}`
+                body: formData
             })
             .then(response => response.json())
             .then(data => {
@@ -284,10 +288,28 @@
                 rzp.open();
             })
             .catch(error => {
-                console.error('Error:', error);
-                alert('Failed to process payment: ' + error.message);
+                console.error('Payment Error:', error);
+                // Show a more user-friendly error message
+                const errorContainer = document.createElement('div');
+                errorContainer.className = 'alert alert-danger mt-3';
+                errorContainer.innerHTML = `
+                    <i class='fas fa-exclamation-circle me-2'></i>
+                    Failed to process payment: ${error.message || 'Please try again or contact support.'}
+                `;
+                
+                const form = document.getElementById('payment-form');
+                form.parentNode.insertBefore(errorContainer, form.nextSibling);
+                
+                // Scroll to the error message
+                errorContainer.scrollIntoView({ behavior: 'smooth' });
+                
                 document.getElementById('payment-loader').style.display = 'none';
                 document.getElementById('pay-button').disabled = false;
+                
+                // Remove error message after 10 seconds
+                setTimeout(() => {
+                    errorContainer.remove();
+                }, 10000);
             });
         } else {
             // For Cash on Delivery, submit the form directly
