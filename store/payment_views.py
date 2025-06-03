@@ -10,6 +10,7 @@ from django.urls import reverse
 from django.contrib import messages
 from django.utils import timezone
 from django.db import transaction
+from django.http import Http404
 
 from .models import Order, Payment, OrderItem, Cart, CartItem
 from .payment_utils import create_razorpay_order, verify_payment_signature
@@ -27,15 +28,28 @@ class PaymentView(LoginRequiredMixin, View):
     
     def get_object(self):
         order_id = self.kwargs.get('order_id')
-        return get_object_or_404(self.get_queryset(), id=order_id)
+        if not order_id:
+            raise Http404("Order ID is required")
+        try:
+            return get_object_or_404(self.get_queryset(), id=order_id)
+        except (ValueError, TypeError):
+            raise Http404("Invalid order ID format")
     
     def get(self, request, *args, **kwargs):
-        order = self.get_object()
-        context = {
-            'order': order,
-            'razorpay_key': settings.RAZORPAY_KEY_ID
-        }
-        return render(request, self.template_name, context)
+        try:
+            order = self.get_object()
+            context = {
+                'order': order,
+                'razorpay_key': settings.RAZORPAY_KEY_ID
+            }
+            return render(request, self.template_name, context)
+        except Http404 as e:
+            messages.error(request, str(e))
+            return redirect('store:checkout')
+        except Exception as e:
+            logger.error(f"Error in payment view GET: {str(e)}", exc_info=True)
+            messages.error(request, "An error occurred while loading the payment page.")
+            return redirect('store:checkout')
     
     def post(self, request, *args, **kwargs):
         is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
@@ -43,6 +57,9 @@ class PaymentView(LoginRequiredMixin, View):
         try:
             order = self.get_object()
             payment_method = request.POST.get('payment_method', 'razorpay')
+            
+            if not payment_method in ['razorpay', 'cash_on_delivery']:
+                raise ValueError("Invalid payment method")
             
             # Update order with payment method
             order.payment_method = payment_method
@@ -106,13 +123,32 @@ class PaymentView(LoginRequiredMixin, View):
                 }
                 return render(request, self.template_name, context)
                 
-        except Exception as e:
-            error_message = f"Payment processing failed: {str(e)}"
+        except Http404 as e:
+            error_message = str(e)
+            if is_ajax:
+                return JsonResponse({
+                    'success': False,
+                    'message': error_message
+                }, status=404)
+            messages.error(request, error_message)
+            return redirect('store:checkout')
+        except ValueError as e:
+            error_message = str(e)
             if is_ajax:
                 return JsonResponse({
                     'success': False,
                     'message': error_message
                 }, status=400)
+            messages.error(request, error_message)
+            return redirect('store:checkout')
+        except Exception as e:
+            logger.error(f"Payment processing failed: {str(e)}", exc_info=True)
+            error_message = "An error occurred while processing your payment. Please try again."
+            if is_ajax:
+                return JsonResponse({
+                    'success': False,
+                    'message': error_message
+                }, status=500)
             messages.error(request, error_message)
             return redirect('store:checkout')
 

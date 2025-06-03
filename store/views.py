@@ -2446,115 +2446,113 @@ class ClearCartView(LoginRequiredMixin, View):
 
 class CheckoutView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
-        # First check if there's an active cart with items
-        cart = Cart.objects.filter(user=request.user, status='active').first()
-        
-        if not cart or cart.items.count() == 0:
-            messages.error(request, "Your cart is empty. Add some products before checking out.")
-            return redirect('store:cart')
-        
-        # Try to get the most recent pending order for the user
-        order = Order.objects.filter(
-            user=request.user,
-            payment_status=False
-        ).order_by('-created_at').first()
-        
-        # If no pending order exists, create a new one
-        if not order:
-            order = Order.objects.create(
+        try:
+            # First check if there's an active cart with items
+            cart = Cart.objects.filter(user=request.user, status='active').first()
+            
+            if not cart or not cart.items.exists():
+                messages.error(request, "Your cart is empty. Add some products before checking out.")
+                return redirect('store:cart')
+            
+            # Get or create order
+            order, created = Order.objects.get_or_create(
                 user=request.user,
-                first_name=request.user.first_name or '',
-                last_name=request.user.last_name or '',
-                email=request.user.email or '',
-                address='',
-                city='',
-                state='',
-                postal_code='',
-                country='India',
                 status='pending',
                 payment_status=False,
-                payment_method='cash_on_delivery',
-                cart=cart  # Associate the cart with the order
+                defaults={
+                    'first_name': request.user.first_name or '',
+                    'last_name': request.user.last_name or '',
+                    'email': request.user.email,
+                    'phone': getattr(request.user.profile, 'phone', ''),
+                    'total_amount': cart.get_total_cost()
+                }
             )
-        else:
-            # If order exists but is not associated with the current cart, update it
-            if not order.cart:
-                order.cart = cart
-                order.save(update_fields=['cart'])
-                
-            # Clear existing order items to resync with cart
-            order.items.all().delete()
-        
-        # Create/update order items from cart
-        for cart_item in cart.items.all():
-            OrderItem.objects.create(
-                order=order,
-                product=cart_item.product,
-                price=cart_item.price,
-                quantity=cart_item.quantity
-            )
-        
-        # Update order total
-        order.get_total_cost()
-        
-        # Create or update payment record
-        payment, payment_created = Payment.objects.get_or_create(
-            order=order,
-            defaults={
-                'payment_id': f'PAY-{order.id}-{timezone.now().strftime("%Y%m%d%H%M%S")}',
-                'payment_method': 'pending',
-                'amount': order.total_amount,
-                'status': 'pending'
-            }
-        )
-        
-        if not payment_created:
-            payment.amount = order.total_amount
-            payment.save(update_fields=['amount', 'updated_at'])
-        
-        # Calculate values for display in template
-        display_shipping_cost = Decimal('99.00')  # Flat rate for India
-        display_tax_rate = Decimal('0.18')  # 18% GST
-        display_tax = (order.total_amount * display_tax_rate).quantize(Decimal('0.01'))
-        display_total = (order.total_amount + display_shipping_cost + display_tax).quantize(Decimal('0.01'))
-        
-        # Update order total (including shipping and tax)
-        order.total_amount = display_total
-        order.save(update_fields=['total_amount', 'updated_at'])
-        
-        context = {
-            'order': order,
-            'shipping_cost': display_shipping_cost,
-            'tax': display_tax,
-            'total_with_shipping': display_total,
-            'items': order.items.all().select_related('product'),  # Optimize query with select_related
-            'razorpay_key': settings.RAZORPAY_KEY_ID,
-            'currency': 'INR',
-            'amount_in_paise': int(display_total * 100),
-            'callback_url': request.build_absolute_uri(reverse('store:payment_webhook'))
-        }
-        
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return JsonResponse({
-                'success': True,
-                'order_number': order.order_number,
-                'order_id': order.id,
-                'redirect_url': reverse('store:checkout_success', kwargs={'order_number': order.order_number})
-            })
             
-        return render(request, 'store/checkout.html', context)
+            if not created:
+                # Update existing order with latest cart total
+                order.total_amount = cart.get_total_cost()
+                order.save(update_fields=['total_amount', 'updated_at'])
+            
+            # Create or update order items
+            with transaction.atomic():
+                # Clear existing items
+                order.items.all().delete()
+                
+                # Add new items from cart
+                for cart_item in cart.items.all():
+                    OrderItem.objects.create(
+                        order=order,
+                        product=cart_item.product,
+                        price=cart_item.product.price,
+                        quantity=cart_item.quantity
+                    )
+            
+            # Create or update payment record
+            payment, payment_created = Payment.objects.get_or_create(
+                order=order,
+                defaults={
+                    'payment_id': f'PAY-{order.id}-{timezone.now().strftime("%Y%m%d%H%M%S")}',
+                    'payment_method': 'pending',
+                    'amount': order.total_amount,
+                    'status': 'pending'
+                }
+            )
+            
+            if not payment_created:
+                payment.amount = order.total_amount
+                payment.save(update_fields=['amount', 'updated_at'])
+            
+            # Calculate values for display in template
+            display_shipping_cost = Decimal('99.00')  # Flat rate for India
+            display_tax_rate = Decimal('0.18')  # 18% GST
+            display_tax = (order.total_amount * display_tax_rate).quantize(Decimal('0.01'))
+            display_total = (order.total_amount + display_shipping_cost + display_tax).quantize(Decimal('0.01'))
+            
+            # Update order total (including shipping and tax)
+            order.total_amount = display_total
+            order.save(update_fields=['total_amount', 'updated_at'])
+            
+            context = {
+                'order': order,
+                'shipping_cost': display_shipping_cost,
+                'tax': display_tax,
+                'total_with_shipping': display_total,
+                'items': order.items.all().select_related('product'),
+                'razorpay_key': settings.RAZORPAY_KEY_ID,
+                'currency': 'INR',
+                'amount_in_paise': int(display_total * 100),
+                'callback_url': request.build_absolute_uri(reverse('store:payment_webhook'))
+            }
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'order_number': order.order_number,
+                    'order_id': order.id,
+                    'redirect_url': reverse('store:checkout_success', kwargs={'order_number': order.order_number})
+                })
+            
+            return render(request, 'store/checkout.html', context)
+            
+        except Exception as e:
+            logger.error(f"Error in checkout GET: {str(e)}", exc_info=True)
+            messages.error(request, "An error occurred while loading the checkout page. Please try again.")
+            return redirect('store:cart')
     
     def post(self, request, *args, **kwargs):
         try:
             # Get the order
-            order = Order.objects.get(user=request.user, payment_status=False)
+            order = Order.objects.filter(
+                user=request.user,
+                payment_status=False,
+                status='pending'
+            ).first()
+            
+            if not order:
+                messages.error(request, "No active order found. Please add items to your cart first.")
+                return redirect('store:cart')
             
             if order.items.count() == 0:
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'Your cart is empty. Add some products before checking out.'
-                    }, status=400)
                 messages.error(request, "Your cart is empty. Add some products before checking out.")
                 return redirect('store:cart')
             
@@ -2604,9 +2602,6 @@ class CheckoutView(LoginRequiredMixin, View):
                 
             elif order.payment_method == 'razorpay':
                 try:
-                    import razorpay
-                    from django.conf import settings
-                    
                     # Initialize Razorpay client
                     client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
                     
@@ -2616,7 +2611,7 @@ class CheckoutView(LoginRequiredMixin, View):
                     # Create Razorpay order
                     razorpay_order = client.order.create({
                         'amount': amount,
-                        'currency': 'INR',  # Change to your currency if needed
+                        'currency': 'INR',
                         'receipt': f'order_{order.id}',
                         'payment_capture': 1  # Auto-capture payment
                     })
@@ -2645,7 +2640,8 @@ class CheckoutView(LoginRequiredMixin, View):
                     return redirect('store:payment_success')
                     
                 except Exception as e:
-                    error_message = f"An error occurred while processing your payment: {str(e)}"
+                    logger.error(f"Razorpay order creation failed: {str(e)}", exc_info=True)
+                    error_message = "An error occurred while processing your payment. Please try again."
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return JsonResponse({
                             'success': False,
@@ -2655,19 +2651,9 @@ class CheckoutView(LoginRequiredMixin, View):
                     messages.error(request, error_message)
                     return redirect('store:checkout')
             
-        except Order.DoesNotExist:
-            error_message = "No active order found. Please add items to your cart first."
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': False,
-                    'message': error_message
-                }, status=400)
-            
-            messages.error(request, error_message)
-            return redirect('store:cart')
-            
         except Exception as e:
-            error_message = f"An error occurred: {str(e)}"
+            logger.error(f"Error in checkout POST: {str(e)}", exc_info=True)
+            error_message = "An error occurred while processing your order. Please try again."
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,
