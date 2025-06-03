@@ -1305,24 +1305,20 @@ def add_to_cart(request, product_id, quantity=1):
                 defaults={'status': 'active'}
             )
             
-            # Get or create cart item
-            cart_item, created = CartItem.objects.get_or_create(
-                cart=cart,
-                product=product,
-                defaults={
-                    'quantity': 0,  # Will be increased below
-                    'price': product.price
-                }
-            )
-            
-            # Update quantity
-            if created:
-                cart_item.quantity = quantity
-            else:
+            # Check if item already exists in cart
+            try:
+                cart_item = CartItem.objects.get(cart=cart, product=product)
+                # Item exists, update quantity
                 cart_item.increase_quantity(quantity)
-                
-            # This will trigger validation in save()
-            cart_item.save()
+                cart_item.save()
+            except CartItem.DoesNotExist:
+                # Item doesn't exist, create new with quantity
+                cart_item = CartItem.objects.create(
+                    cart=cart,
+                    product=product,
+                    quantity=quantity,
+                    price=product.price
+                )
             
             # Update cart totals
             cart.update_totals()
