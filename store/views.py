@@ -2660,11 +2660,17 @@ class CheckoutView(LoginRequiredMixin, View):
                 order.status = 'pending'
                 order.save()
                 
-                # Update product stock
+                # Update product quantity
                 for item in order.items.all():
                     product = item.product
-                    product.stock -= item.quantity
-                    product.save()
+                    if product.quantity >= item.quantity:  # Check if enough stock is available
+                        product.quantity -= item.quantity
+                        product.save()
+                    else:
+                        # Handle case where there's not enough stock
+                        logger.warning(f"Not enough stock for product {product.id}. Available: {product.quantity}, Requested: {item.quantity}")
+                        messages.warning(request, f"Not enough stock for {product.name}. Only {product.quantity} available.")
+                        return redirect('store:cart')
                 
                 # Clear the cart
                 cart = Cart.objects.filter(user=request.user, status='active').first()
