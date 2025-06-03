@@ -2521,6 +2521,87 @@ class ClearCartView(LoginRequiredMixin, View):
 class CheckoutView(LoginRequiredMixin, View):
     login_url = '/accounts/login/'
     redirect_field_name = 'next'
+    
+    def process_cart_items(self, cart):
+        """Process cart items and return active and inactive items."""
+        try:
+            # Get all cart items with product information and lock them for update
+            with transaction.atomic():
+                all_cart_items = list(cart.items.select_related('product')
+                    .select_for_update()
+                    .filter(product__isnull=False))
+            
+            # Debug: Log all cart items and their active status
+            logger.debug(f"[Checkout] Processing cart {cart.id} with {len(all_cart_items)} items")
+            for item in all_cart_items:
+                logger.debug(
+                    f"[Checkout] Cart Item: {item.product.name if item.product else 'No product'}, "
+                    f"Active: {getattr(item.product, 'is_active', 'N/A')}, "
+                    f"Quantity: {item.quantity}, "
+                    f"In Stock: {getattr(item.product, 'quantity', 'N/A')}"
+                )
+            
+            # Filter for active products with sufficient stock
+            active_cart_items = []
+            inactive_items = []
+            
+            with transaction.atomic():
+                for item in all_cart_items:
+                    try:
+                        # Refresh the product to get the latest stock
+                        if item.product:
+                            item.product.refresh_from_db()
+                        
+                        # Check if product is active and available
+                        if not item.product or not item.product.is_active:
+                            inactive_items.append(item)
+                            continue
+                            
+                        # Check stock if tracking is enabled
+                        if item.product.track_quantity and item.quantity > item.product.quantity:
+                            if item.product.quantity > 0:
+                                # Reduce quantity to available stock
+                                item.quantity = item.product.quantity
+                                item.save(update_fields=['quantity', 'updated_at'])
+                                
+                                messages.warning(
+                                    self.request,
+                                    f"Reduced quantity of '{item.product.name}' to available stock ({item.product.quantity}).",
+                                    extra_tags='cart_warning'
+                                )
+                                active_cart_items.append(item)
+                            else:
+                                # Product is out of stock
+                                inactive_items.append(item)
+                                messages.warning(
+                                    self.request,
+                                    f"'{item.product.name}' is out of stock and has been removed from your cart.",
+                                    extra_tags='cart_warning'
+                                )
+                        else:
+                            # Product is available
+                            active_cart_items.append(item)
+                            
+                    except Exception as e:
+                        logger.error(f"Error processing cart item {item.id}: {str(e)}", exc_info=True)
+                        inactive_items.append(item)
+            
+            # Remove inactive items from cart
+            if inactive_items:
+                inactive_count = len(inactive_items)
+                inactive_names = ", ".join([f"'{item.product.name}'" for item in inactive_items if item.product])
+                messages.warning(
+                    self.request, 
+                    f"Removed {inactive_count} inactive items from cart: {inactive_names}",
+                    extra_tags='cart_warning'
+                )
+                CartItem.objects.filter(id__in=[item.id for item in inactive_items]).delete()
+            
+            return active_cart_items, inactive_items
+            
+        except Exception as e:
+            logger.error(f"Error processing cart items: {str(e)}", exc_info=True)
+            return [], []
     def get(self, request, *args, **kwargs):
         try:
             with transaction.atomic():
@@ -2534,51 +2615,23 @@ class CheckoutView(LoginRequiredMixin, View):
                     messages.error(request, "No active cart found. Please add some products to your cart first.")
                     return redirect('store:cart')
                 
-                # Get all cart items with product information
-                all_cart_items = cart.items.select_related('product').filter(product__isnull=False)
+                # Process cart items and get active/inactive items
+                active_cart_items, inactive_items = self.process_cart_items(cart)
                 
-                # Debug: Log all cart items and their active status
-                print(f"[DEBUG] All cart items: {all_cart_items.count()}")
-                for item in all_cart_items:
-                    print(f"[DEBUG] Cart Item: {item.product.name if item.product else 'No product'}, "
-                          f"Active: {getattr(item.product, 'is_active', 'N/A')}, "
-                          f"Quantity: {item.quantity}, "
-                          f"In Stock: {item.product.quantity if item.product and hasattr(item.product, 'quantity') else 'N/A'}")
+                if not active_cart_items:
+                    messages.error(
+                        request,
+                        "Your cart contains no active products. "
+                        "Please add some products before checking out.",
+                        extra_tags='cart_error'
+                    )
+                    return redirect('store:cart')
                 
-                # Filter for active products with sufficient stock
-                active_cart_items = []
-                inactive_items = []
-                
-                for item in all_cart_items:
-                    if not item.product or not item.product.is_active:
-                        inactive_items.append(item)
-                        continue
-                        
-                    if item.product.track_quantity and item.quantity > item.product.quantity:
-                        messages.warning(
-                            request,
-                            f"Reduced quantity of '{item.product.name}' to available stock ({item.product.quantity}).",
-                            extra_tags='cart_warning'
-                        )
-                        item.quantity = item.product.quantity
-                        item.save()
-                        
-                        if item.quantity > 0:
-                            active_cart_items.append(item)
-                        else:
-                            inactive_items.append(item)
-                    else:
-                        active_cart_items.append(item)
-                
-                # Remove inactive items from cart
-                if inactive_items:
-                    inactive_count = len(inactive_items)
-                    inactive_names = ", ".join([f"'{item.product.name}'" for item in inactive_items])
-                    messages.warning(request, f"Removed {inactive_count} inactive items from cart: {inactive_names}")
-                    CartItem.objects.filter(id__in=[item.id for item in inactive_items]).delete()
+                # Calculate order total from active cart items
+                order_total = sum(item.total_price for item in active_cart_items)
                 
                 # Create or update order
-                order, created = Order.objects.get_or_create(
+                order, created = Order.objects.update_or_create(
                     user=request.user,
                     status='pending',
                     payment_status=False,
@@ -2588,116 +2641,86 @@ class CheckoutView(LoginRequiredMixin, View):
                         'last_name': request.user.last_name or '',
                         'email': request.user.email,
                         'phone': getattr(request.user.profile, 'phone', ''),
-                        'total_amount': cart.total
+                        'total_amount': order_total
                     }
                 )
                 
-                if not created:
-                    order.total_amount = cart.total
-                    order.cart = cart
-                    order.save(update_fields=['total_amount', 'cart', 'updated_at'])
-            
-            # Create or update order items
-            with transaction.atomic():
-                # Clear existing items
+                # Clear existing order items
                 order.items.all().delete()
                 
-                if not active_cart_items:
-                    messages.error(
-                        request,
-                        "Your cart contains no active products. "
-                        "This might be because some products are no longer available. "
-                        "Please update your cart and try again.",
-                        extra_tags='cart_error'
-                    )
-                    return redirect('store:cart')
-                
-                # Process active cart items
+                # Create order items from active cart items
                 for cart_item in active_cart_items:
-                    # Create order item
                     OrderItem.objects.create(
                         order=order,
                         product=cart_item.product,
-                        price=cart_item.price,  # Use the price from cart item
+                        price=cart_item.price,
                         quantity=cart_item.quantity
                     )
-                    
-                    # Update product stock if tracking is enabled
+                
+                # Update product quantities if tracking is enabled
+                for cart_item in active_cart_items:
                     if cart_item.product.track_quantity:
                         cart_item.product.quantity -= cart_item.quantity
-                        cart_item.product.save(update_fields=['quantity'])
-            
-            # Create or update payment record
-            payment, payment_created = Payment.objects.get_or_create(
-                order=order,
-                defaults={
-                    'payment_id': f'PAY-{order.id}-{timezone.now().strftime("%Y%m%d%H%M%S")}',
-                    'payment_method': 'pending',
-                    'amount': order.total_amount,
-                    'status': 'pending'
+                        cart_item.product.save(update_fields=['quantity', 'updated_at'])
+                
+                # Clear the cart after successful order creation
+                cart.items.all().delete()
+                cart.update_totals()
+                
+                # Create payment record
+                payment, _ = Payment.objects.update_or_create(
+                    order=order,
+                    defaults={
+                        'payment_id': f'PAY-{order.id}-{timezone.now().strftime("%Y%m%d%H%M%S")}',
+                        'payment_method': 'pending',
+                        'amount': order.total_amount,
+                        'status': 'pending'
+                    }
+                )
+                
+                # Calculate values for display in template
+                display_shipping_cost = Decimal('99.00')  # Flat rate for India
+                display_tax_rate = Decimal('0.18')  # 18% GST
+                display_tax = (order.total_amount * display_tax_rate).quantize(Decimal('0.01'))
+                display_total = (order.total_amount + display_shipping_cost + display_tax).quantize(Decimal('0.01'))
+                
+                # Update order total (including shipping and tax)
+                order.total_amount = display_total
+                order.save(update_fields=['total_amount', 'updated_at'])
+                
+                context = {
+                    'order': order,
+                    'cart': cart,
+                    'shipping_cost': display_shipping_cost,
+                    'tax': display_tax,
+                    'total_with_shipping': display_total,
+                    'payment': payment,
+                    'razorpay_key': settings.RAZORPAY_KEY_ID,
+                    'razorpay_amount': int(display_total * 100),  # Convert to paise
+                    'razorpay_currency': 'INR',
+                    'razorpay_order_id': f'order_{order.id}_{int(time.time())}',
+                    'razorpay_name': 'Angel Plants',
+                    'razorpay_description': f'Order #{order.id}',
+                    'razorpay_prefill': {
+                        'name': f"{order.first_name} {order.last_name}".strip(),
+                        'email': order.email,
+                        'contact': order.phone or ''
+                    },
+                    'theme': {
+                        'color': '#3399cc'
+                    }
                 }
-            )
-            
-            if not payment_created:
-                payment.amount = order.total_amount
-                payment.save(update_fields=['amount', 'updated_at'])
-            
-            # Calculate values for display in template
-            display_shipping_cost = Decimal('99.00')  # Flat rate for India
-            display_tax_rate = Decimal('0.18')  # 18% GST
-            display_tax = (order.total_amount * display_tax_rate).quantize(Decimal('0.01'))
-            display_total = (order.total_amount + display_shipping_cost + display_tax).quantize(Decimal('0.01'))
-            
-            # Update order total (including shipping and tax)
-            order.total_amount = display_total
-            order.save(update_fields=['total_amount', 'updated_at'])
-            
-            context = {
-                'order': order,
-                'cart': cart,
-                'shipping_cost': display_shipping_cost,
-                'tax': display_tax,
-                'total_with_shipping': display_total,
-                'items': order.items.all().select_related('product'),
-                'razorpay_key': settings.RAZORPAY_KEY_ID,
-                'currency': 'INR',
-                'amount_in_paise': int(display_total * 100),
-                'callback_url': request.build_absolute_uri(reverse('store:payment_webhook')),
-                'debug': settings.DEBUG,  # Add debug flag
-                'error_details': None  # Will be populated if there are errors
-            }
-            
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': True,
-                    'order_number': order.order_number,
-                    'order_id': order.id,
-                    'redirect_url': reverse('store:checkout_success', kwargs={'order_number': order.order_number})
-                })
-            
-            return render(request, 'store/checkout.html', context)
-            
+                
+                return render(request, 'store/checkout.html', context)
+                
         except Exception as e:
-            logger.error(f"Error in checkout GET: {str(e)}", exc_info=True)
-            error_details = {
-                'error_type': type(e).__name__,
-                'error_message': str(e),
-                'traceback': traceback.format_exc()
-            }
-            
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return JsonResponse({
-                    'success': False,
-                    'message': 'An error occurred while loading the checkout page.',
-                    'error_details': error_details
-                }, status=500)
-            
-            messages.error(request, "An error occurred while loading the checkout page. Please try again.")
-            context = {
-                'debug': settings.DEBUG,
-                'error_details': error_details
-            }
-            return render(request, 'store/checkout.html', context)
+            logger.error(f"Error during checkout: {str(e)}", exc_info=True)
+            messages.error(
+                request,
+                "An error occurred while processing your order. Please try again.",
+                extra_tags='error'
+            )
+            return redirect('store:cart')
     
     def post(self, request, *args, **kwargs):
         try:

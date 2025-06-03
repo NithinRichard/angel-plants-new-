@@ -702,26 +702,33 @@ class Cart(models.Model):
     @property
     def subtotal(self):
         """Calculate the subtotal of all items in the cart."""
-        return self.items.aggregate(
-            subtotal=models.Sum(
-                models.F('quantity') * models.F('price'),
-                default=0,
-                output_field=models.DecimalField()
+        from django.db.models import Sum, F, DecimalField, Value
+        from decimal import Decimal
+        
+        result = self.items.aggregate(
+            subtotal=Sum(
+                F('quantity') * F('price'),
+                output_field=DecimalField(max_digits=10, decimal_places=2),
+                default=Decimal('0.00')
             )
-        )['subtotal']
+        )
+        return result['subtotal'] or Decimal('0.00')
     
     @property
     def total(self):
         """Calculate the total amount."""
         return self.subtotal
     
-    def update_totals(self):
+    def update_totals(self, save=True):
         """Update the cart's totals based on its items."""
         # Calculate new total based on items
         new_total = self.subtotal
+        
+        # Update the total if it has changed
         if self.total != new_total:
             self.total = new_total
-            self.save(update_fields=['total', 'updated_at'])
+            if save:
+                self.save(update_fields=['total', 'updated_at'])
         return self.total
         
     def clear(self):
@@ -792,9 +799,14 @@ class CartItem(models.Model):
     
     def clean(self):
         """Validate the cart item before saving."""
-        if not self.product.is_active:
+        if not self.product or not self.product.is_active:
             raise ValidationError({
-                'product': 'Cannot add an inactive product to cart.'
+                'product': 'This product is no longer available.'
+            })
+            
+        if self.quantity < 1:
+            raise ValidationError({
+                'quantity': 'Quantity must be at least 1.'
             })
             
         if self.product.track_quantity and self.quantity > self.product.quantity:
@@ -804,18 +816,30 @@ class CartItem(models.Model):
     
     def save(self, *args, **kwargs):
         """Save the cart item and update the cart's updated_at timestamp."""
+        from decimal import Decimal
+        
         # Set price from product if not set or if it's a new item
         if not self.pk or not hasattr(self, 'price') or not self.price:
-            self.price = self.product.price
+            self.price = Decimal(str(self.product.price))
             
+        # Ensure quantity is positive
+        self.quantity = max(1, int(self.quantity))
+        
         # Validate before saving
         self.full_clean()
         
         # Save the item
-        super().save(*args, **kwargs)
-        
-        # Update cart's updated_at and totals
-        self.cart.update_totals()
+        with transaction.atomic():
+            # Lock the cart to prevent race conditions
+            cart = Cart.objects.select_for_update().get(pk=self.cart_id)
+            super().save(*args, **kwargs)
+            
+            # Update cart's updated_at and totals without triggering another save
+            cart.updated_at = timezone.now()
+            cart.update_totals(save=True)
+            
+            # Refresh the cart from database to get latest values
+            cart.refresh_from_db()
 
 
 class Order(models.Model):
