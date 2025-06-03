@@ -97,8 +97,12 @@
                         </div>
                     </div>
                     
+                    <!-- Hidden input to store selected payment method -->
+                    <input type="hidden" name="payment_method" id="payment-method" value="razorpay">
+                    
                     <!-- Payment Form -->
                     <form id="payment-form" method="post" action="{% url 'store:process_payment' %}">
+                        {% csrf_token %}
                         {% csrf_token %}
                         <input type="hidden" name="order_id" value="{{ order.id }}">
                         <input type="hidden" name="payment_method" id="payment-method" value="razorpay">
@@ -228,10 +232,40 @@
     document.getElementById('payment-form').addEventListener('submit', function(e) {
         e.preventDefault();
         
-        const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked').value;
+        const paymentMethod = document.querySelector('input[name="paymentMethod"]:checked');
+        
+        // Check if a payment method is selected
+        if (!paymentMethod) {
+            // Show error message
+            const errorContainer = document.createElement('div');
+            errorContainer.className = 'alert alert-danger mt-3';
+            errorContainer.innerHTML = `
+                <i class='fas fa-exclamation-circle me-2'></i>
+                Please select a payment method to continue.
+            `;
+            
+            // Remove any existing error messages
+            const existingError = document.querySelector('.alert-danger');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            // Insert the error message
+            const form = document.getElementById('payment-form');
+            form.parentNode.insertBefore(errorContainer, form);
+            
+            // Scroll to the error message
+            errorContainer.scrollIntoView({ behavior: 'smooth' });
+            return;
+        }
+        
+        const selectedMethod = paymentMethod.value;
         const orderId = '{{ order.id }}';
         
-        if (paymentMethod === 'razorpay') {
+        // Update the hidden input with the selected payment method
+        document.getElementById('payment-method').value = selectedMethod;
+        
+        if (selectedMethod === 'razorpay') {
             // Show loader
             document.getElementById('payment-loader').style.display = 'block';
             document.getElementById('pay-button').disabled = true;
