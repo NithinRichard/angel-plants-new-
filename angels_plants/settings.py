@@ -144,6 +144,7 @@ STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 STATICFILES_DIRS = [
     os.path.join(BASE_DIR, 'staticfiles'),
+    os.path.join(BASE_DIR, 'store', 'static'),  # For app-specific static files
 ]
 
 # Media files (user uploaded content)

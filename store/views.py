@@ -2288,7 +2288,7 @@ class CartView(LoginRequiredMixin, View):
                 'shipping_cost': shipping_cost.quantize(Decimal('0.00')),
                 'tax': tax.quantize(Decimal('0.00')),
                 'total_with_shipping': total_with_shipping,
-                'is_cart_empty': not items.exists()  # Check if there are any items
+                'is_cart_empty': len(items) == 0  # Check if there are any items
             }
             
             print(f"[DEBUG] CartView - Rendering template with {items.count()} items")
