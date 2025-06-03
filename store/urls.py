@@ -57,8 +57,11 @@ urlpatterns = [
     path('cart/remove/<int:product_id>/', remove_from_cart, name='remove_from_cart'),
     path('cart/clear/', views.ClearCartView.as_view(), name='clear_cart'),
     
+    # Test URL for debugging
+    path('test-checkout/', lambda request: JsonResponse({'status': 'ok', 'message': 'Test checkout URL is working!'}), name='test_checkout'),
+    
     # Checkout URLs - Make sure this appears before any catch-all patterns
-    path('checkout/', views.CheckoutView.as_view(), name='checkout'),  # This is the correct URL pattern
+    path('checkout/', views.CheckoutView.as_view(), name='checkout'),  # This will be at /store/checkout/
     path('checkout/success/<str:order_number>/', views.CheckoutSuccessView.as_view(), name='checkout_success'),
     path('checkout/cancel/', views.CheckoutCancelView.as_view(), name='checkout_cancel'),
     

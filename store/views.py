@@ -3,6 +3,7 @@ import logging
 from django.shortcuts import render, get_object_or_404, redirect, HttpResponseRedirect
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.forms import UserCreationForm
 
 logger = logging.getLogger(__name__)
@@ -2445,6 +2446,8 @@ class ClearCartView(LoginRequiredMixin, View):
             return redirect('store:cart')
 
 class CheckoutView(LoginRequiredMixin, View):
+    login_url = '/accounts/login/'
+    redirect_field_name = 'next'
     def get(self, request, *args, **kwargs):
         try:
             # First check if there's an active cart with items
