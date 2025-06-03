@@ -2195,20 +2195,34 @@ class CartView(LoginRequiredMixin, View):
             tax_rate = Decimal('0.18')
             tax = cart.total * tax_rate
             
-            # Get cart items with related products to minimize database queries
-            # Only get active products that exist
-            items = cart.items.select_related('product').filter(product__isnull=False, product__is_active=True)
+            # Get all cart items with related products
+            all_items = cart.items.select_related('product').filter(product__isnull=False)
             
-            # Debug: Print items
-            print(f"[DEBUG] CartView - Number of active items in cart: {items.count()}")
+            # Separate active and inactive items
+            active_items = all_items.filter(product__is_active=True)
+            inactive_items = all_items.filter(product__is_active=False)
             
-            # Check for any items with missing or inactive products
-            all_items = cart.items.select_related('product').all()
-            for item in all_items:
-                if not item.product:
-                    print(f"[WARNING] Cart {cart.id} has an item with no product (Item ID: {item.id})")
-                elif not item.product.is_active:
-                    print(f"[WARNING] Cart {cart.id} has an inactive product: {item.product.name} (Product ID: {item.product.id})")
+            # Debug logging
+            print(f"[DEBUG] CartView - Total items: {all_items.count()}")
+            print(f"[DEBUG] CartView - Active items: {active_items.count()}")
+            print(f"[DEBUG] CartView - Inactive items: {inactive_items.count()}")
+            
+            # Show warning for inactive products
+            for item in inactive_items:
+                print(f"[WARNING] Cart {cart.id} has an inactive product: {item.product.name} (Product ID: {item.product.id})")
+                messages.warning(
+                    request,
+                    f"The product '{item.product.name}' is no longer available and has been removed from your cart.",
+                    extra_tags='cart_warning'
+                )
+                # Remove inactive items from cart
+                item.delete()
+            
+            # Update cart totals
+            cart.update_totals()
+            
+            # Use only active items for the rest of the view
+            items = active_items
             
             # Calculate total with shipping and tax
             total_with_shipping = (cart.total + shipping_cost + tax).quantize(Decimal('0.00'))
@@ -2485,11 +2499,23 @@ class CheckoutView(LoginRequiredMixin, View):
                 # Clear existing items
                 order.items.all().delete()
                 
-                # Add new items from cart
-                cart_items = cart.items.select_related('product').filter(product__is_active=True)
+                # Debug: Log all cart items and their active status
+                all_cart_items = cart.items.select_related('product').all()
+                print(f"[DEBUG] All cart items: {all_cart_items.count()}")
+                for item in all_cart_items:
+                    print(f"[DEBUG] Cart Item: {item.product.name if item.product else 'No product'}, "
+                          f"Active: {getattr(item.product, 'is_active', 'N/A')}, "
+                          f"Quantity: {item.quantity}")
+                
+                # Get active cart items
+                cart_items = all_cart_items.filter(product__is_active=True)
+                print(f"[DEBUG] Active cart items: {cart_items.count()}")
                 
                 if not cart_items.exists():
-                    messages.error(request, "Your cart contains no active products. Please update your cart and try again.")
+                    messages.error(request, 
+                                 "Your cart contains no active products. "
+                                 "This might be because some products are no longer available. "
+                                 "Please update your cart and try again.")
                     return redirect('store:cart')
                 
                 for cart_item in cart_items:
