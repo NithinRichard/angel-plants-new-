@@ -2556,14 +2556,29 @@ class CheckoutView(LoginRequiredMixin, View):
                 messages.error(request, "Your cart is empty. Add some products before checking out.")
                 return redirect('store:cart')
             
+            # Validate required fields
+            required_fields = ['first_name', 'last_name', 'email', 'address', 'district', 'postal_code', 'phone', 'payment_method']
+            missing_fields = [field for field in required_fields if not request.POST.get(field)]
+            
+            if missing_fields:
+                error_message = f"Please fill in all required fields: {', '.join(missing_fields)}"
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': error_message
+                    }, status=400)
+                messages.error(request, error_message)
+                return redirect('store:checkout')
+            
             # Update order details from form data
             order.first_name = request.POST.get('first_name', '')
             order.last_name = request.POST.get('last_name', '')
             order.email = request.POST.get('email', '')
             order.address = request.POST.get('address', '')
             order.address2 = request.POST.get('address2', '')
-            order.city = request.POST.get('city', '')
-            order.state = request.POST.get('state', '')
+            order.district = request.POST.get('district', '')
+            order.city = request.POST.get('district', '')  # Using district as city
+            order.state = request.POST.get('state', 'Kerala')
             order.postal_code = request.POST.get('postal_code', '')
             order.country = request.POST.get('country', 'India')
             order.phone = request.POST.get('phone', '')

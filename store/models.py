@@ -823,6 +823,8 @@ class Order(models.Model):
     
     # Shipping information
     address = models.TextField(_('shipping address'))
+    address2 = models.TextField(_('address line 2'), blank=True, null=True)
+    district = models.CharField(_('district'), max_length=100, null=True, blank=True)
     city = models.CharField(_('city'), max_length=100)
     state = models.CharField(_('state'), max_length=100)
     postal_code = models.CharField(_('postal code'), max_length=20)
