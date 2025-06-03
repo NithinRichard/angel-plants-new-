@@ -54,16 +54,30 @@ class PaymentView(LoginRequiredMixin, View):
                 order.payment_status = 'pending'
                 order.save(update_fields=['status', 'payment_status', 'updated_at'])
                 
+                # Clear the cart
+                cart = Cart.objects.filter(user=request.user, status='active').first()
+                if cart:
+                    cart.status = 'completed'
+                    cart.save()
+                
                 if is_ajax:
                     return JsonResponse({
                         'success': True,
                         'redirect_url': reverse('store:checkout_success', kwargs={'order_number': order.order_number})
                     })
                 return redirect('store:checkout_success', order_number=order.order_number)
-            else:
+            
+            elif payment_method == 'razorpay':
                 # Process Razorpay payment
                 amount = int(order.total_amount * 100)  # Convert to paise
                 razorpay_order = create_razorpay_order(amount, order.id)
+                
+                if not razorpay_order:
+                    raise Exception('Failed to create Razorpay order')
+                
+                # Save Razorpay order ID
+                order.razorpay_order_id = razorpay_order['id']
+                order.save(update_fields=['razorpay_order_id', 'updated_at'])
                 
                 if is_ajax:
                     return JsonResponse({
@@ -93,61 +107,8 @@ class PaymentView(LoginRequiredMixin, View):
                 return render(request, self.template_name, context)
                 
         except Exception as e:
-            error_message = str(e)
-            if is_ajax:
-                return JsonResponse({
-                    'success': False,
-                    'message': error_message
-                }, status=400)
-            messages.error(request, error_message)
-            return redirect('store:checkout')
-                
-                # Clear the cart
-                cart = Cart.objects.filter(user=request.user, status='active').first()
-                if cart:
-                    cart.status = 'completed'
-                    cart.save()
-                
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': True,
-                        'redirect_url': reverse('store:payment_success')
-                    })
-                return redirect('store:payment_success')
-                
-            elif payment_method == 'razorpay':
-                # Create Razorpay order
-                razorpay_order = create_razorpay_order(
-                    amount=int(order.total_amount * 100),  # Convert to paise
-                    receipt=f'order_{order.id}'
-                )
-                
-                if not razorpay_order:
-                    raise Exception('Failed to create Razorpay order')
-                
-                # Save Razorpay order ID
-                order.razorpay_order_id = razorpay_order['id']
-                order.save(update_fields=['razorpay_order_id', 'updated_at'])
-                
-                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                    return JsonResponse({
-                        'success': True,
-                        'redirect_url': reverse('store:payment_success'),
-                        'razorpay': {
-                            'key_id': settings.RAZORPAY_KEY_ID,
-                            'order_id': razorpay_order['id'],
-                            'amount': razorpay_order['amount'],
-                            'currency': razorpay_order['currency'],
-                            'name': "Angel's Plant Shop",
-                            'description': f'Order #{order.order_number}'
-                        }
-                    })
-                
-                return redirect('store:payment_success')
-                
-        except Exception as e:
             error_message = f"Payment processing failed: {str(e)}"
-            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            if is_ajax:
                 return JsonResponse({
                     'success': False,
                     'message': error_message
