@@ -26,7 +26,7 @@ class PaymentView(LoginRequiredMixin, View):
         return Order.objects.filter(user=self.request.user, status__in=['pending', 'processing'])
     
     def get_object(self):
-        order_id = self.kwargs.get('pk')
+        order_id = self.kwargs.get('order_id')
         return get_object_or_404(self.get_queryset(), id=order_id)
     
     def get(self, request, *args, **kwargs):
