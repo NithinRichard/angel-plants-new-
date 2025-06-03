@@ -2199,6 +2199,10 @@ class ProductDetailView(DetailView):
 
 
 class CartView(LoginRequiredMixin, View):
+    # Constants for cart calculations
+    TAX_RATE = Decimal('0.18')  # 18% tax rate
+    SHIPPING_COST = Decimal('5.00')  # Flat rate shipping cost
+    
     def get(self, request, *args, **kwargs):
         logger.debug(f"[CartView] Loading cart for user {request.user.id}")
         
@@ -2307,17 +2311,18 @@ class CartView(LoginRequiredMixin, View):
             items = active_items
             
             # Calculate total with shipping and tax
-            tax = (cart.total * tax_rate).quantize(Decimal('0.00'))
-            total_with_shipping = (cart.total + shipping_cost + tax).quantize(Decimal('0.00'))
+            tax = (cart.total * self.TAX_RATE).quantize(Decimal('0.00'))
+            total_with_shipping = (cart.total + self.SHIPPING_COST + tax).quantize(Decimal('0.00'))
             
             # Prepare context with all necessary data
             context = {
                 'cart': cart,
                 'items': items,  # Only include items with active products
-                'shipping_cost': shipping_cost.quantize(Decimal('0.00')),
+                'shipping_cost': self.SHIPPING_COST.quantize(Decimal('0.00')),
                 'tax': tax,
                 'total_with_shipping': total_with_shipping,
-                'is_cart_empty': len(items) == 0  # Check if there are any items
+                'is_cart_empty': len(items) == 0,  # Check if there are any items
+                'tax_rate': int(self.TAX_RATE * 100)  # For display purposes (e.g., '18%')
             }
             
             print(f"[DEBUG] CartView - Rendering template with {len(items)} items")
