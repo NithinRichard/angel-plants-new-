@@ -2514,6 +2514,7 @@ class CheckoutView(LoginRequiredMixin, View):
             
             context = {
                 'order': order,
+                'cart': cart,
                 'shipping_cost': display_shipping_cost,
                 'tax': display_tax,
                 'total_with_shipping': display_total,
@@ -2521,7 +2522,9 @@ class CheckoutView(LoginRequiredMixin, View):
                 'razorpay_key': settings.RAZORPAY_KEY_ID,
                 'currency': 'INR',
                 'amount_in_paise': int(display_total * 100),
-                'callback_url': request.build_absolute_uri(reverse('store:payment_webhook'))
+                'callback_url': request.build_absolute_uri(reverse('store:payment_webhook')),
+                'debug': settings.DEBUG,  # Add debug flag
+                'error_details': None  # Will be populated if there are errors
             }
             
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
@@ -2536,8 +2539,25 @@ class CheckoutView(LoginRequiredMixin, View):
             
         except Exception as e:
             logger.error(f"Error in checkout GET: {str(e)}", exc_info=True)
+            error_details = {
+                'error_type': type(e).__name__,
+                'error_message': str(e),
+                'traceback': traceback.format_exc()
+            }
+            
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'An error occurred while loading the checkout page.',
+                    'error_details': error_details
+                }, status=500)
+            
             messages.error(request, "An error occurred while loading the checkout page. Please try again.")
-            return redirect('store:cart')
+            context = {
+                'debug': settings.DEBUG,
+                'error_details': error_details
+            }
+            return render(request, 'store/checkout.html', context)
     
     def post(self, request, *args, **kwargs):
         try:
@@ -2549,10 +2569,30 @@ class CheckoutView(LoginRequiredMixin, View):
             ).first()
             
             if not order:
+                error_details = {
+                    'error_type': 'OrderNotFound',
+                    'message': 'No active order found for the user'
+                }
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'No active order found. Please add items to your cart first.',
+                        'error_details': error_details
+                    }, status=400)
                 messages.error(request, "No active order found. Please add items to your cart first.")
                 return redirect('store:cart')
             
             if order.items.count() == 0:
+                error_details = {
+                    'error_type': 'EmptyOrder',
+                    'message': 'Order has no items'
+                }
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Your cart is empty. Add some products before checking out.',
+                        'error_details': error_details
+                    }, status=400)
                 messages.error(request, "Your cart is empty. Add some products before checking out.")
                 return redirect('store:cart')
             
@@ -2561,13 +2601,35 @@ class CheckoutView(LoginRequiredMixin, View):
             missing_fields = [field for field in required_fields if not request.POST.get(field)]
             
             if missing_fields:
-                error_message = f"Please fill in all required fields: {', '.join(missing_fields)}"
+                error_details = {
+                    'error_type': 'ValidationError',
+                    'message': 'Missing required fields',
+                    'missing_fields': missing_fields
+                }
                 if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                     return JsonResponse({
                         'success': False,
-                        'message': error_message
+                        'message': f"Please fill in all required fields: {', '.join(missing_fields)}",
+                        'error_details': error_details
                     }, status=400)
-                messages.error(request, error_message)
+                messages.error(request, f"Please fill in all required fields: {', '.join(missing_fields)}")
+                return redirect('store:checkout')
+            
+            # Validate phone number
+            phone = request.POST.get('phone', '')
+            if not phone.isdigit() or len(phone) != 10:
+                error_details = {
+                    'error_type': 'ValidationError',
+                    'message': 'Invalid phone number',
+                    'phone': phone
+                }
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return JsonResponse({
+                        'success': False,
+                        'message': 'Please enter a valid 10-digit phone number',
+                        'error_details': error_details
+                    }, status=400)
+                messages.error(request, 'Please enter a valid 10-digit phone number')
                 return redirect('store:checkout')
             
             # Update order details from form data
@@ -2656,26 +2718,36 @@ class CheckoutView(LoginRequiredMixin, View):
                     
                 except Exception as e:
                     logger.error(f"Razorpay order creation failed: {str(e)}", exc_info=True)
-                    error_message = "An error occurred while processing your payment. Please try again."
+                    error_details = {
+                        'error_type': 'RazorpayError',
+                        'message': str(e),
+                        'traceback': traceback.format_exc()
+                    }
                     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                         return JsonResponse({
                             'success': False,
-                            'message': error_message
+                            'message': 'An error occurred while processing your payment. Please try again.',
+                            'error_details': error_details
                         }, status=400)
                     
-                    messages.error(request, error_message)
+                    messages.error(request, 'An error occurred while processing your payment. Please try again.')
                     return redirect('store:checkout')
             
         except Exception as e:
             logger.error(f"Error in checkout POST: {str(e)}", exc_info=True)
-            error_message = "An error occurred while processing your order. Please try again."
+            error_details = {
+                'error_type': type(e).__name__,
+                'message': str(e),
+                'traceback': traceback.format_exc()
+            }
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return JsonResponse({
                     'success': False,
-                    'message': error_message
+                    'message': 'An error occurred while processing your order. Please try again.',
+                    'error_details': error_details
                 }, status=500)
             
-            messages.error(request, error_message)
+            messages.error(request, 'An error occurred while processing your order. Please try again.')
             return redirect('store:checkout')
 
 
