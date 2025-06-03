@@ -38,6 +38,8 @@ class PaymentView(LoginRequiredMixin, View):
         return render(request, self.template_name, context)
     
     def post(self, request, *args, **kwargs):
+        is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+        
         try:
             order = self.get_object()
             payment_method = request.POST.get('payment_method', 'razorpay')
@@ -49,8 +51,56 @@ class PaymentView(LoginRequiredMixin, View):
             if payment_method == 'cash_on_delivery':
                 # Process cash on delivery
                 order.status = 'processing'
-                order.payment_status = True
+                order.payment_status = 'pending'
                 order.save(update_fields=['status', 'payment_status', 'updated_at'])
+                
+                if is_ajax:
+                    return JsonResponse({
+                        'success': True,
+                        'redirect_url': reverse('store:checkout_success', kwargs={'order_number': order.order_number})
+                    })
+                return redirect('store:checkout_success', order_number=order.order_number)
+            else:
+                # Process Razorpay payment
+                amount = int(order.total_amount * 100)  # Convert to paise
+                razorpay_order = create_razorpay_order(amount, order.id)
+                
+                if is_ajax:
+                    return JsonResponse({
+                        'success': True,
+                        'razorpay': {
+                            'key_id': settings.RAZORPAY_KEY_ID,
+                            'amount': amount,
+                            'currency': 'INR',
+                            'name': 'Angel\'s Plants',
+                            'description': f'Order #{order.order_number}',
+                            'order_id': razorpay_order['id']
+                        },
+                        'order_id': order.id
+                    })
+                
+                # Non-AJAX fallback
+                context = {
+                    'order': order,
+                    'razorpay_key': settings.RAZORPAY_KEY_ID,
+                    'razorpay_order_id': razorpay_order['id'],
+                    'amount': amount,
+                    'currency': 'INR',
+                    'name': request.user.get_full_name() or request.user.username,
+                    'email': request.user.email,
+                    'contact': getattr(request.user.profile, 'phone', '')
+                }
+                return render(request, self.template_name, context)
+                
+        except Exception as e:
+            error_message = str(e)
+            if is_ajax:
+                return JsonResponse({
+                    'success': False,
+                    'message': error_message
+                }, status=400)
+            messages.error(request, error_message)
+            return redirect('store:checkout')
                 
                 # Clear the cart
                 cart = Cart.objects.filter(user=request.user, status='active').first()
