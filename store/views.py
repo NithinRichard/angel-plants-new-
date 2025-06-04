@@ -2479,7 +2479,7 @@ class CheckoutSuccessView(LoginRequiredMixin, View):
                 'items',
                 'items__product',
                 'items__product__category',
-                'items__product__images'
+                'items__product__product_images'  # Changed from 'images' to 'product_images'
             ).get(
                 order_number=order_number, 
                 user=request.user
