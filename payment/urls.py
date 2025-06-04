@@ -1,4 +1,5 @@
 from django.urls import path
+from django.views.decorators.http import require_http_methods
 from . import views
 
 app_name = 'payment'
@@ -19,6 +20,6 @@ urlpatterns = [
     # Webhook endpoint for Razorpay
     path('webhook/', views.payment_webhook, name='payment_webhook'),
     
-    # Payment verification endpoint
-    path('verify-payment/', views.verify_payment, name='verify_payment'),
+    # Payment verification endpoint (POST only)
+    path('verify-payment/', require_http_methods(['POST'])(views.verify_payment), name='verify_payment'),
 ]

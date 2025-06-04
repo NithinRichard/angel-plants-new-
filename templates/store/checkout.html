@@ -396,7 +396,8 @@
                                     console.log('Verification response:', verifyData);
                                     if (verifyData.status === 'success') {
                                         // Redirect to success page with order number
-                                        window.location.href = `/checkout/success/${data.order_number || data.order_id}/`;
+                                        // Using the correct URL pattern from Django URLs
+                                        window.location.href = `/store/checkout/success/${data.order_number || data.order_id}/`;
                                     } else {
                                         throw new Error(verifyData.message || 'Payment verification failed');
                                     }
@@ -404,7 +405,7 @@
                                 .catch(error => {
                                     console.error('Payment verification error:', error);
                                     // Still redirect to success page but with a warning
-                                    window.location.href = `/checkout/success/${data.order_number || data.order_id}/?verification_error=1`;
+                                    window.location.href = `/store/checkout/success/${data.order_number || data.order_id}/?verification_error=1`;
                                 });
                             },
                             prefill: {
