@@ -700,27 +700,31 @@ def verify_payment(request):
             
             # Update order status in a transaction
             with transaction.atomic():
-                # First save the order with payment details
+                # Update order with payment details
                 order.payment_status = True
                 order.status = 'processing'  # Set status to processing
-                order.payment_date = timezone.now()
                 order.payment_id = payment_id
+                order.razorpay_order_id = order_id
+                order.payment_signature = signature
                 
-                # Save all fields to ensure status is updated
-                order.save()
+                # Save with specific fields to ensure proper updates
+                order.save(update_fields=['payment_status', 'status', 'payment_id', 
+                                       'razorpay_order_id', 'payment_signature', 'updated_at'])
                 
-                # Create or update payment record
+                # Handle payment record creation/update
                 payment_amount = payment.get('amount', 0) / 100  # Convert from paise to rupees
+                payment_data = {
+                    'payment_id': payment_id,
+                    'amount': payment_amount,
+                    'payment_method': 'razorpay',
+                    'status': 'completed',
+                    'payment_gateway_response': payment
+                }
+                
+                # Try to get existing payment or create a new one
                 payment_obj, created = Payment.objects.update_or_create(
                     order=order,
-                    transaction_id=payment_id,  # Use transaction_id as part of the lookup
-                    defaults={
-                        'amount': payment_amount,
-                        'payment_method': 'razorpay',
-                        'status': 'completed',
-                        'payment_gateway_response': payment,
-                        'created_at': timezone.now()
-                    }
+                    defaults=payment_data
                 )
                 
                 # Log the status update
