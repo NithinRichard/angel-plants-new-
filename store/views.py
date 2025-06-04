@@ -2,6 +2,7 @@ from decimal import Decimal
 import logging
 import time
 import traceback
+import razorpay
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404, redirect, HttpResponseRedirect
