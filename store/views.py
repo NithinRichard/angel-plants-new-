@@ -2502,8 +2502,16 @@ class CheckoutSuccessView(LoginRequiredMixin, View):
                 'order_items_count': order.items.count(),
             }
             
+            # Add payment to context
+            context.update({
+                'payment': payment,
+                'shipping_cost': Decimal('99.00'),  # Flat rate for India
+                'tax': (order.total_amount * Decimal('0.18')).quantize(Decimal('0.01')),  # 18% GST
+                'total_with_shipping': order.total_amount,
+            })
+            
             # Add cache control headers
-            response = render(request, 'store/checkout_success.html', context)
+            response = render(request, 'store/order_confirmation.html', context)
             response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
             response['Pragma'] = 'no-cache'
             response['Expires'] = '0'

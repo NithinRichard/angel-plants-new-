@@ -325,16 +325,9 @@ class PaymentSuccessView(LoginRequiredMixin, View):
                     except Exception as e:
                         logger.error(f"Failed to send order confirmation email: {str(e)}")
                 
-                # Render success template with order and payment details
-                return render(request, 'store/payment/payment_success.html', {
-                    'order': order,
-                    'payment': {
-                        'payment_id': payment_id,
-                        'amount': order.total_amount,
-                        'status': 'captured',
-                        'date': order.payment_date
-                    }
-                })
+                # Redirect to order confirmation page
+                messages.success(request, "Your payment was successful!")
+                return redirect('store:checkout_success', order_number=order.order_number)
                 
         except Order.DoesNotExist:
             logger.error(f"Order not found or already processed: {order_id}")
