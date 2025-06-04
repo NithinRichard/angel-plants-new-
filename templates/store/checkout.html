@@ -373,40 +373,68 @@
                             description: data.razorpay.description,
                             order_id: data.razorpay.order_id,
                             handler: function(response) {
-                                // On successful payment, verify the payment with our server
-                                console.log('Razorpay response:', response);
-                                console.log('Order data from Razorpay:', data);
-                                
-                                // Verify the payment with our server
-                                fetch('/payment/verify-payment/', {
-                                    method: 'POST',
-                                    headers: {
-                                        'Content-Type': 'application/json',
-                                        'X-CSRFToken': getCookie('csrftoken')
-                                    },
-                                    body: JSON.stringify({
+                                try {
+                                    console.log('Razorpay response:', response);
+                                    console.log('Order data from Razorpay:', data);
+                                    
+                                    if (!response.razorpay_payment_id || !response.razorpay_order_id || !response.razorpay_signature) {
+                                        throw new Error('Missing required payment data in Razorpay response');
+                                    }
+                                    
+                                    if (!data.order_id) {
+                                        throw new Error('Order ID not found in data');
+                                    }
+                                    
+                                    // Prepare verification data
+                                    const verifyData = {
                                         razorpay_payment_id: response.razorpay_payment_id,
                                         razorpay_order_id: response.razorpay_order_id,
                                         razorpay_signature: response.razorpay_signature,
-                                        order_id: data.order_id  // Use the order_id from the initial response
+                                        order_id: data.order_id
+                                    };
+                                    
+                                    console.log('Sending verification request:', verifyData);
+                                    
+                                    // Verify the payment with our server
+                                    fetch('/payment/verify-payment/', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRFToken': getCookie('csrftoken')
+                                        },
+                                        body: JSON.stringify(verifyData)
                                     })
-                                })
-                                .then(verifyResponse => verifyResponse.json())
-                                .then(verifyData => {
-                                    console.log('Verification response:', verifyData);
-                                    if (verifyData.status === 'success') {
-                                        // Redirect to success page with order number
-                                        // Using the correct URL pattern from Django URLs
-                                        window.location.href = `/store/checkout/success/${data.order_number || data.order_id}/`;
-                                    } else {
-                                        throw new Error(verifyData.message || 'Payment verification failed');
-                                    }
-                                })
-                                .catch(error => {
-                                    console.error('Payment verification error:', error);
-                                    // Still redirect to success page but with a warning
+                                    .then(verifyResponse => verifyResponse.json())
+                                    .then(verifyData => {
+                                        console.log('Verification response:', verifyData);
+                                        if (verifyData.status === 'success') {
+                                            // Redirect to success page with order number
+                                            window.location.href = `/store/checkout/success/${data.order_number || data.order_id}/`;
+                                        } else {
+                                            throw new Error(verifyData.message || 'Payment verification failed');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Payment verification error:', error);
+                                        // Still redirect to success page but with a warning
+                                        window.location.href = `/store/checkout/success/${data.order_number || data.order_id}/?verification_error=1`;
+                                    });
+                                    
+                                } catch (error) {
+                                    console.error('Error in payment handler:', error);
+                                    // Redirect to success page with error
                                     window.location.href = `/store/checkout/success/${data.order_number || data.order_id}/?verification_error=1`;
-                                });
+                                }
+                            },
+                            modal: {
+                                ondismiss: function() {
+                                    // Handle modal dismissal (user closed the modal without payment)
+                                    console.log('Payment modal was dismissed');
+                                    // Reset button state if user closes the Razorpay modal
+                                    submitBtn.disabled = false;
+                                    submitBtnText.textContent = 'Place Order';
+                                    submitBtnSpinner.classList.add('d-none');
+                                }
                             },
                             prefill: {
                                 name: formData.get('first_name') + ' ' + formData.get('last_name'),
@@ -415,19 +443,30 @@
                             },
                             theme: {
                                 color: '#3399cc'
-                            },
-                            modal: {
-                                ondismiss: function() {
-                                    // Reset button state if user closes the Razorpay modal
-                                    submitBtn.disabled = false;
-                                    submitBtnText.textContent = 'Place Order';
-                                    submitBtnSpinner.classList.add('d-none');
-                                }
                             }
                         };
                         
-                        const rzp = new Razorpay(options);
-                        rzp.open();
+                        // Initialize Razorpay
+                        const rzp1 = new Razorpay(options);
+                        
+                        // Add event listeners before opening
+                        rzp1.on('payment.failed', function(response) {
+                            console.error('Payment failed:', response.error);
+                            // Reset button state
+                            submitBtn.disabled = false;
+                            submitBtnText.textContent = 'Place Order';
+                            submitBtnSpinner.classList.add('d-none');
+                            // Show error to user
+                            alert('Payment failed: ' + (response.error.description || 'Unknown error'));
+                        });
+                        
+                        // Open the Razorpay payment modal
+                        rzp1.open();
+                        
+                        // This is just for debugging - the main handler is in the options
+                        rzp1.on('payment.success', function(response) {
+                            console.log('Razorpay payment success event:', response);
+                        });
                         
                         // Reset button state after opening Razorpay
                         submitBtn.disabled = false;

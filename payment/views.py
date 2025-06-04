@@ -641,8 +641,6 @@ def payment_success(request):
         return redirect('store:checkout')
 
 @login_required
-@require_GET
-@login_required
 @require_http_methods(["POST"])
 def verify_payment(request):
     """
@@ -702,6 +700,7 @@ def verify_payment(request):
             
             # Update order status in a transaction
             with transaction.atomic():
+                # First save the order with payment details
                 order.payment_status = True
                 order.status = 'processing'
                 order.payment_date = timezone.now()
@@ -712,8 +711,8 @@ def verify_payment(request):
                 payment_amount = payment.get('amount', 0) / 100  # Convert from paise to rupees
                 payment_obj, created = Payment.objects.update_or_create(
                     order=order,
+                    transaction_id=payment_id,  # Use transaction_id as part of the lookup
                     defaults={
-                        'transaction_id': payment_id,
                         'amount': payment_amount,
                         'payment_method': 'razorpay',
                         'status': 'completed',
