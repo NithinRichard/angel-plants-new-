@@ -655,28 +655,41 @@ def verify_payment(request):
         signature = data.get('razorpay_signature')
         order_id_param = data.get('order_id')
         
+        logger.info(f"Payment verification request - Payment ID: {payment_id}, Order ID: {order_id}")
+        
         if not all([payment_id, order_id, signature, order_id_param]):
+            error_msg = f"Missing required parameters - Payment ID: {payment_id}, Order ID: {order_id_param}"
+            logger.error(error_msg)
             return JsonResponse({'status': 'error', 'message': 'Missing required parameters'}, status=400)
         
-        # Get the order
+        # Get the order with select_related and prefetch_related for better performance
         try:
-            order = Order.objects.get(
+            order = Order.objects.select_related('user').get(
                 id=order_id_param,
                 razorpay_order_id=order_id,
                 user=request.user
             )
+            logger.info(f"Order found - ID: {order.id}, Status: {order.status}, Payment Status: {order.payment_status}")
         except Order.DoesNotExist:
-            logger.error(f"Order not found - Order ID: {order_id_param}, Razorpay Order ID: {order_id}")
+            error_msg = f"Order not found - Order ID: {order_id_param}, Razorpay Order ID: {order_id}"
+            logger.error(error_msg)
             return JsonResponse({'status': 'error', 'message': 'Order not found'}, status=404)
         
-        # If payment is already processed, return success
+        # If payment is already processed, return success with order number
         if order.payment_status:
-            return JsonResponse({'status': 'success', 'message': 'Payment already processed'})
+            logger.info(f"Payment already processed for order {order.id}")
+            return JsonResponse({
+                'status': 'success', 
+                'message': 'Payment already processed',
+                'order_id': order.id,
+                'order_number': order.order_number
+            })
         
-        # Verify the payment signature
+        # Initialize Razorpay client
         client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
         
         try:
+            # Verify the payment signature
             client.utility.verify_payment_signature({
                 'razorpay_payment_id': payment_id,
                 'razorpay_order_id': order_id,
@@ -685,8 +698,9 @@ def verify_payment(request):
             
             # Get payment details from Razorpay
             payment = client.payment.fetch(payment_id)
+            logger.info(f"Fetched payment details - Status: {payment.get('status')}")
             
-            # Update order status
+            # Update order status in a transaction
             with transaction.atomic():
                 order.payment_status = True
                 order.status = 'processing'
@@ -695,30 +709,47 @@ def verify_payment(request):
                 order.save(update_fields=['payment_status', 'status', 'payment_date', 'payment_id', 'updated_at'])
                 
                 # Create or update payment record
-                Payment.objects.update_or_create(
+                payment_amount = payment.get('amount', 0) / 100  # Convert from paise to rupees
+                payment_obj, created = Payment.objects.update_or_create(
                     order=order,
                     defaults={
                         'transaction_id': payment_id,
-                        'amount': payment.get('amount', 0) / 100,  # Convert from paise to rupees
+                        'amount': payment_amount,
                         'payment_method': 'razorpay',
                         'status': 'completed',
-                        'raw_data': json.dumps(payment),
+                        'payment_gateway_response': payment,
                         'created_at': timezone.now()
                     }
                 )
+                logger.info(f"{'Created' if created else 'Updated'} payment record - ID: {payment_obj.id}")
             
             logger.info(f"Successfully verified payment {payment_id} for order {order.id}")
-            return JsonResponse({'status': 'success'})
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Payment verified successfully',
+                'order_id': order.id,
+                'order_number': order.order_number
+            })
+            
+        except razorpay.errors.SignatureVerificationError as e:
+            error_msg = f"Signature verification failed - {str(e)}"
+            logger.error(error_msg)
+            return JsonResponse({'status': 'error', 'message': 'Invalid payment signature'}, status=400)
             
         except Exception as e:
-            logger.error(f"Error verifying payment {payment_id}: {str(e)}", exc_info=True)
+            error_msg = f"Error verifying payment {payment_id}: {str(e)}"
+            logger.error(error_msg, exc_info=True)
             return JsonResponse({'status': 'error', 'message': 'Payment verification failed'}, status=400)
             
-    except json.JSONDecodeError:
-        return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
+    except json.JSONDecodeError as e:
+        error_msg = f"Invalid JSON in request body: {str(e)}"
+        logger.error(error_msg)
+        return JsonResponse({'status': 'error', 'message': 'Invalid request data'}, status=400)
+        
     except Exception as e:
-        logger.error(f"Error in verify_payment: {str(e)}", exc_info=True)
-        return JsonResponse({'status': 'error', 'message': 'Internal server error'}, status=500)
+        error_msg = f"Unexpected error in verify_payment: {str(e)}"
+        logger.error(error_msg, exc_info=True)
+        return JsonResponse({'status': 'error', 'message': 'An unexpected error occurred'}, status=500)
 
 
 def payment_failed(request):
