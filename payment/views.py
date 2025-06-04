@@ -702,10 +702,12 @@ def verify_payment(request):
             with transaction.atomic():
                 # First save the order with payment details
                 order.payment_status = True
-                order.status = 'processing'
+                order.status = 'processing'  # Set status to processing
                 order.payment_date = timezone.now()
                 order.payment_id = payment_id
-                order.save(update_fields=['payment_status', 'status', 'payment_date', 'payment_id', 'updated_at'])
+                
+                # Save all fields to ensure status is updated
+                order.save()
                 
                 # Create or update payment record
                 payment_amount = payment.get('amount', 0) / 100  # Convert from paise to rupees
@@ -720,6 +722,9 @@ def verify_payment(request):
                         'created_at': timezone.now()
                     }
                 )
+                
+                # Log the status update
+                logger.info(f"Updated order {order.id} status to {order.status} and payment status to {order.payment_status}")
                 logger.info(f"{'Created' if created else 'Updated'} payment record - ID: {payment_obj.id}")
             
             logger.info(f"Successfully verified payment {payment_id} for order {order.id}")
