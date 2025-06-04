@@ -290,6 +290,9 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Razorpay Checkout Script -->
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
 <script>
     document.addEventListener('DOMContentLoaded', function() {
         const form = document.getElementById('checkout-form');
@@ -302,7 +305,24 @@
         const submitBtnSpinner = document.getElementById('submit-btn-spinner');
         const formErrors = document.getElementById('form-errors');
         
-        form.addEventListener('submit', async function(e) {
+        // Function to get CSRF token from cookie
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+        
+        // Function to handle form submission
+        async function handleFormSubmit(e) {
             e.preventDefault();
             
             // Reset error display
@@ -316,35 +336,25 @@
             
             try {
                 const formData = new FormData(form);
-                // Get CSRF token from cookie
-                function getCookie(name) {
-                    let cookieValue = null;
-                    if (document.cookie && document.cookie !== '') {
-                        const cookies = document.cookie.split(';');
-                        for (let i = 0; i < cookies.length; i++) {
-                            const cookie = cookies[i].trim();
-                            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                                break;
-                            }
-                        }
-                    }
-                    return cookieValue;
-                }
-                
                 const csrftoken = getCookie('csrftoken');
                 const headers = {
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Content-Type': 'application/x-www-form-urlencoded',
                 };
                 
-                // Only add CSRF token if it exists
                 if (csrftoken) {
                     headers['X-CSRFToken'] = csrftoken;
                 }
                 
+                // Convert FormData to URL-encoded string
+                const urlEncodedData = new URLSearchParams();
+                for (const pair of formData.entries()) {
+                    urlEncodedData.append(pair[0], pair[1]);
+                }
+                
                 const response = await fetch(form.action, {
                     method: 'POST',
-                    body: formData,
+                    body: urlEncodedData,
                     headers: headers,
                     credentials: 'same-origin'
                 });
@@ -352,18 +362,57 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    if (data.redirect_url) {
+                    // If Razorpay payment is selected
+                    if (data.razorpay) {
+                        // Initialize Razorpay payment
+                        const options = {
+                            key: data.razorpay.key_id,
+                            amount: data.razorpay.amount,
+                            currency: data.razorpay.currency,
+                            name: data.razorpay.name,
+                            description: data.razorpay.description,
+                            order_id: data.razorpay.order_id,
+                            handler: function(response) {
+                                // On successful payment, redirect to success page
+                                window.location.href = data.redirect_url;
+                            },
+                            prefill: {
+                                name: formData.get('first_name') + ' ' + formData.get('last_name'),
+                                email: formData.get('email'),
+                                contact: formData.get('phone')
+                            },
+                            theme: {
+                                color: '#3399cc'
+                            },
+                            modal: {
+                                ondismiss: function() {
+                                    // Reset button state if user closes the Razorpay modal
+                                    submitBtn.disabled = false;
+                                    submitBtnText.textContent = 'Place Order';
+                                    submitBtnSpinner.classList.add('d-none');
+                                }
+                            }
+                        };
+                        
+                        const rzp = new Razorpay(options);
+                        rzp.open();
+                        
+                        // Reset button state after opening Razorpay
+                        submitBtn.disabled = false;
+                        submitBtnText.textContent = 'Place Order';
+                        submitBtnSpinner.classList.add('d-none');
+                        
+                    } else if (data.redirect_url) {
+                        // For non-Razorpay payments, redirect to success page
                         window.location.href = data.redirect_url;
-                    } else {
-                        window.location.href = data.razorpay ? '/payment/success/' : '/checkout/success/';
                     }
                 } else {
-                    // Show detailed error message
+                    // Show error message
                     let errorMessage = data.message || 'An error occurred. Please try again.';
                     if (data.error_details) {
                         errorMessage += '\n\nDebug Information:\n' + JSON.stringify(data.error_details, null, 2);
                     }
-                    formErrors.innerHTML = `<pre class="mb-0">${errorMessage}</pre>`;
+                    formErrors.innerHTML = `<div class="alert alert-danger">${errorMessage}</div>`;
                     formErrors.classList.remove('d-none');
                     
                     // Reset button state
@@ -373,7 +422,7 @@
                 }
             } catch (error) {
                 console.error('Error:', error);
-                formErrors.innerHTML = `<pre class="mb-0">Error: ${error.message}\n\nStack Trace:\n${error.stack}</pre>`;
+                formErrors.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
                 formErrors.classList.remove('d-none');
                 
                 // Reset button state
@@ -381,7 +430,10 @@
                 submitBtnText.textContent = 'Place Order';
                 submitBtnSpinner.classList.add('d-none');
             }
-        });
+        }
+        
+        // Add form submit event listener
+        form.addEventListener('submit', handleFormSubmit);
         
         // Phone number validation
         const phoneInput = document.getElementById('phone');
@@ -391,7 +443,7 @@
         
         phoneInput.addEventListener('blur', function() {
             if (this.value.length !== 10) {
-                formErrors.innerHTML = `<pre class="mb-0">Validation Error: Please enter a valid 10-digit phone number\n\nCurrent Value: ${this.value}\nLength: ${this.value.length}</pre>`;
+                formErrors.innerHTML = '<div class="alert alert-warning">Please enter a valid 10-digit phone number</div>';
                 formErrors.classList.remove('d-none');
             } else {
                 formErrors.classList.add('d-none');
@@ -402,7 +454,7 @@
         const districtSelect = document.getElementById('district');
         districtSelect.addEventListener('change', function() {
             if (!this.value) {
-                formErrors.innerHTML = `<pre class="mb-0">Validation Error: Please select a district\n\nCurrent Value: ${this.value}</pre>`;
+                formErrors.innerHTML = '<div class="alert alert-warning">Please select a district</div>';
                 formErrors.classList.remove('d-none');
             } else {
                 formErrors.classList.add('d-none');
