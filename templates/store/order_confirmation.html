@@ -103,8 +103,8 @@
         <h1 class="display-5 fw-bold mb-3">Thank You for Your Order!</h1>
         <p class="lead mb-4">Your order has been placed successfully.</p>
         <div class="alert alert-success" role="alert">
-            <h4 class="alert-heading">Order #{{ order.id }}</h4>
-            <p class="mb-0">We've sent a confirmation email to <strong>{{ user.email }}</strong> with your order details.</p>
+            <h4 class="alert-heading">Order #{{ order.order_number|default:order.id }}</h4>
+            <p class="mb-0">We've sent a confirmation email to <strong>{{ order.email }}</strong> with your order details.</p>
         </div>
     </div>
     
@@ -134,15 +134,19 @@
                         </div>
                         <div class="col-md-6">
                             <h6>Shipping Information</h6>
-                            <p class="mb-1"><strong>Name:</strong> {{ user.get_full_name|default:user.username }}</p>
-                            <p class="mb-1"><strong>Email:</strong> {{ user.email }}</p>
-                            <p class="mb-1"><strong>Phone:</strong> (123) 456-7890</p>
+                            <p class="mb-1"><strong>Name:</strong> {{ order.first_name }} {{ order.last_name }}</p>
+                            <p class="mb-1"><strong>Email:</strong> {{ order.email }}</p>
+                            {% if order.phone %}
+                                <p class="mb-1"><strong>Phone:</strong> {{ order.phone }}</p>
+                            {% endif %}
                             <p class="mb-0">
                                 <strong>Address:</strong><br>
-                                123 Main St<br>
-                                Apt 4B<br>
-                                New York, NY 10001<br>
-                                United States
+                                {{ order.address }}<br>
+                                {% if order.address2 %}{{ order.address2 }}<br>{% endif %}
+                                {{ order.city }}, 
+                                {% if order.district %}{{ order.district }}, {% endif %}
+                                {{ order.state }} {{ order.postal_code }}<br>
+                                {{ order.country }}
                             </p>
                         </div>
                     </div>
