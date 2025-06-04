@@ -18,4 +18,7 @@ urlpatterns = [
     
     # Webhook endpoint for Razorpay
     path('webhook/', views.payment_webhook, name='payment_webhook'),
+    
+    # Payment verification endpoint
+    path('verify-payment/', views.verify_payment, name='verify_payment'),
 ]

@@ -373,8 +373,41 @@
                             description: data.razorpay.description,
                             order_id: data.razorpay.order_id,
                             handler: function(response) {
-                                // On successful payment, redirect to success page
-                                window.location.href = data.redirect_url;
+                                // On successful payment, verify the payment with our server
+                                if (response.data.razorpay_order_id) {
+                                    // Verify the payment with our server
+                                    fetch('/payment/verify-payment/', {
+                                        method: 'POST',
+                                        headers: {
+                                            'Content-Type': 'application/json',
+                                            'X-CSRFToken': getCookie('csrftoken')
+                                        },
+                                        body: JSON.stringify({
+                                            razorpay_payment_id: response.razorpay_payment_id,
+                                            razorpay_order_id: response.razorpay_order_id,
+                                            razorpay_signature: response.razorpay_signature,
+                                            order_id: response.data.order_id
+                                        })
+                                    })
+                                    .then(verifyResponse => verifyResponse.json())
+                                    .then(verifyData => {
+                                        if (verifyData.status === 'success') {
+                                            // Redirect to success page
+                                            window.location.href = `/checkout/success/${response.data.order_number || response.data.order_id}/`;
+                                        } else {
+                                            throw new Error(verifyData.message || 'Payment verification failed');
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Payment verification error:', error);
+                                        alert('Payment was successful but there was an error verifying it. Please contact support with your order ID: ' + response.data.order_id);
+                                        // Still redirect to success page but with a warning
+                                        window.location.href = `/checkout/success/${response.data.order_number || response.data.order_id}/?verification_error=1`;
+                                    });
+                                } else {
+                                    // If no Razorpay order ID, just redirect to success page
+                                    window.location.href = `/checkout/success/${response.data.order_number || response.data.order_id}/`;
+                                }
                             },
                             prefill: {
                                 name: formData.get('first_name') + ' ' + formData.get('last_name'),
