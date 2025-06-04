@@ -185,6 +185,15 @@ RAZORPAY_WEBHOOK_SECRET = os.getenv('RAZORPAY_WEBHOOK_SECRET', 'your_webhook_sec
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 DEFAULT_FROM_EMAIL = 'webmaster@example.com'
 
+# Ensure logs directory exists
+LOGS_DIR = os.path.join(BASE_DIR, 'logs')
+try:
+    os.makedirs(LOGS_DIR, exist_ok=True)
+    # Set permissions if needed (0o755 = rwxr-xr-x)
+    os.chmod(LOGS_DIR, 0o755)
+except Exception as e:
+    print(f"Warning: Could not create logs directory at {LOGS_DIR}: {e}")
+
 # Logging Configuration
 LOGGING = {
     'version': 1,
@@ -203,12 +212,22 @@ LOGGING = {
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'formatter': 'simple'
+            'formatter': 'simple',
         },
         'file': {
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOGS_DIR, 'django.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+        },
+        'error_file': {
             'level': 'ERROR',
-            'class': 'logging.FileHandler',
-            'filename': os.path.join(BASE_DIR, 'logs', 'django_errors.log'),
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': os.path.join(LOGS_DIR, 'django_errors.log'),
+            'maxBytes': 1024 * 1024 * 5,  # 5 MB
+            'backupCount': 5,
             'formatter': 'verbose',
         },
         'mail_admins': {
@@ -219,14 +238,18 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['console', 'file'],
+            'handlers': ['console', 'file', 'error_file'],
             'level': 'INFO',
             'propagate': True,
         },
-        'store': {  # Your app's logger
-            'handlers': ['console', 'file'],
+        'store': {
+            'handlers': ['console', 'file', 'error_file'],
             'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': True,
+        },
+        '': {  # Root logger
+            'handlers': ['console', 'file', 'error_file'],
+            'level': 'WARNING',
         },
     },
 }

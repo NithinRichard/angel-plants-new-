@@ -2467,6 +2467,9 @@ class CheckoutSuccessView(LoginRequiredMixin, View):
     def get(self, request, *args, **kwargs):
         order_number = kwargs.get('order_number')
         
+        # Clean the order number in case it contains any extra characters
+        order_number = order_number.strip()
+        
         # Optimize database queries
         try:
             order = Order.objects.select_related(
@@ -2920,7 +2923,7 @@ class CheckoutView(LoginRequiredMixin, View):
                             'success': True,
                             'order_number': order.order_number,
                             'order_id': order.id,
-                            'redirect_url': reverse('store:payment_success'),
+                            'redirect_url': reverse('store:checkout_success', kwargs={'order_number': order.order_number}),
                             'razorpay': {
                                 'key_id': settings.RAZORPAY_KEY_ID,
                                 'order_id': razorpay_order['id'],
@@ -2931,7 +2934,7 @@ class CheckoutView(LoginRequiredMixin, View):
                             }
                         })
                     
-                    return redirect('store:payment_success')
+                    return redirect('store:checkout_success', order_number=order.order_number)
                     
                 except Exception as e:
                     logger.error(f"Razorpay order creation failed: {str(e)}", exc_info=True)
