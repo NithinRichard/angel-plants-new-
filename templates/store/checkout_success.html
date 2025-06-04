@@ -267,19 +267,30 @@
                                 <i class="fas fa-file-invoice me-2"></i> {% trans "Download Invoice" %}
                             </a>
                         </div>
-                    {% else %}
-                        <h1 class="mb-4">{% trans "Order Not Found" %}</h1>
-                        <p class="lead">{% trans "We couldn't find the order you're looking for." %}</p>
-                        <div class="mt-4">
-                            <a href="{% url 'store:home' %}" class="btn btn-primary">
-                                {% trans "Return to Home" %}
-                            </a>
-                        </div>
-                    {% endif %}
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+    {% else %}
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-12 col-lg-8 text-center">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4 p-md-5">
+                        <h1 class="mb-4">{% trans "Order Not Found" %}</h1>
+                        <p class="lead text-muted mb-4">{% trans "We couldn't find the order you're looking for." %}</p>
+                        <div class="mt-4">
+                            <a href="{% url 'store:home' %}" class="btn btn-primary px-4">
+                                <i class="fas fa-home me-2"></i>{% trans "Return to Home" %}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 
