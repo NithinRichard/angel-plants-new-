@@ -393,38 +393,49 @@
         const progressBar = document.querySelector('.progress-bar');
         const steps = document.querySelectorAll('.step');
         
-        // Simulate order progress (in a real app, this would come from the server)
-        function updateProgress(step) {
-            steps.forEach((s, index) => {
-                if (index < step) {
-                    s.classList.add('completed');
-                    s.classList.remove('active');
-                } else if (index === step) {
-                    s.classList.add('active');
-                    s.classList.remove('completed');
+        // Map order status to step index
+        const statusToStep = {
+            'pending': 0,        // Order Placed
+            'processing': 1,     // Processing
+            'shipped': 2,        // Shipped
+            'delivered': 3,      // Delivered
+            'cancelled': -1      // Cancelled (special case)
+        };
+
+        // Update progress based on actual order status
+        function updateProgress() {
+            const status = '{{ order.status|default:"pending" }}';
+            const currentStep = statusToStep[status] || 0;
+            
+            steps.forEach((step, index) => {
+                if (status === 'cancelled') {
+                    // If order is cancelled, show all steps as incomplete
+                    step.classList.remove('completed', 'active');
+                } else if (index < currentStep) {
+                    // Completed steps
+                    step.classList.add('completed');
+                    step.classList.remove('active');
+                } else if (index === currentStep) {
+                    // Current step
+                    step.classList.add('active');
+                    step.classList.remove('completed');
                 } else {
-                    s.classList.remove('active', 'completed');
+                    // Upcoming steps
+                    step.classList.remove('active', 'completed');
                 }
             });
             
-            // Update progress bar
-            const progress = (step / (steps.length - 1)) * 100;
-            progressBar.style.width = progress + '%';
+            // Update progress bar (only if not cancelled)
+            if (status !== 'cancelled') {
+                const progress = (currentStep / (steps.length - 1)) * 100;
+                progressBar.style.width = progress + '%';
+            } else {
+                progressBar.style.width = '0%';
+            }
         }
         
-        // Initial progress (first step completed)
-        updateProgress(0);
-        
-        // Simulate order progress (for demo purposes)
-        let currentStep = 0;
-        const progressInterval = setInterval(() => {
-            if (currentStep < steps.length) {
-                updateProgress(currentStep);
-                currentStep++;
-            } else {
-                clearInterval(progressInterval);
-            }
-        }, 2000);
+        // Initialize progress
+        updateProgress();
         
         // Track order button click
         document.getElementById('trackOrderBtn').addEventListener('click', function(e) {
