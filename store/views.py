@@ -10,6 +10,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.forms import UserCreationForm
+from .email_utils import send_order_confirmation_email
 
 logger = logging.getLogger(__name__)
 from django.views.generic import (
@@ -2509,6 +2510,19 @@ class CheckoutSuccessView(LoginRequiredMixin, View):
                 'tax': (order.total_amount * Decimal('0.18')).quantize(Decimal('0.01')),  # 18% GST
                 'total_with_shipping': order.total_amount,
             })
+            
+            # Send order confirmation email
+            try:
+                email_sent, message = send_order_confirmation_email(order)
+                if not email_sent:
+                    logger.warning(f"Failed to send order confirmation email for order {order.order_number}: {message}")
+                    messages.warning(request, "Your order was placed successfully, but we couldn't send a confirmation email. Please check your order history for details.")
+                else:
+                    logger.info(f"Order confirmation email sent for order {order.order_number} to {order.email}")
+                    messages.success(request, f"Your order has been placed successfully! A confirmation email has been sent to {order.email}.")
+            except Exception as e:
+                logger.error(f"Error sending order confirmation email for order {order.order_number}: {str(e)}", exc_info=True)
+                messages.warning(request, "Your order was placed successfully, but we encountered an error sending the confirmation email. Please check your order history for details.")
             
             # Add cache control headers
             response = render(request, 'store/order_confirmation.html', context)
