@@ -34,16 +34,27 @@ def send_order_confirmation_email(order):
     Returns:
         tuple: (success: bool, message: str)
     """
-    if not order or not order.email:
-        error_msg = f"Invalid order or email address for order: {getattr(order, 'id', 'unknown')}"
+    logger.info(f"Starting email send process for order: {getattr(order, 'id', 'unknown')}")
+    
+    if not order:
+        error_msg = "No order provided"
+        logger.error(error_msg)
+        return False, error_msg
+        
+    if not getattr(order, 'email', None):
+        error_msg = f"No email address for order {getattr(order, 'id', 'unknown')}"
         logger.error(error_msg)
         return False, error_msg
 
     try:
-        # Test SMTP connection first
+        logger.info("Testing SMTP connection...")
         smtp_success, smtp_message = test_email_connection()
+        logger.info(f"SMTP Connection Test: {'Success' if smtp_success else 'Failed'} - {smtp_message}")
         if not smtp_success:
             return False, f"SMTP Connection Error: {smtp_message}"
+            
+        logger.info(f"Preparing email for order {getattr(order, 'id', 'unknown')}")
+        logger.info(f"Recipient: {order.email}")
 
         # Prepare context for the email template
         try:
@@ -80,17 +91,26 @@ def send_order_confirmation_email(order):
             from_email = settings.DEFAULT_FROM_EMAIL
             to_email = [order.email]
             
+            logger.info(f"Email settings - From: {from_email}, To: {to_email}, Host: {settings.EMAIL_HOST}, Port: {settings.EMAIL_PORT}")
+            logger.info(f"Using TLS: {settings.EMAIL_USE_TLS}, Username: {settings.EMAIL_HOST_USER}")
+            logger.info(f"Subject: {subject}")
+            
             logger.info(f"Preparing to send order confirmation email to {to_email} for order {order_identifier}")
             
             # Create email message with explicit connection
-            with get_connection(
-                host=settings.EMAIL_HOST,
-                port=settings.EMAIL_PORT,
-                username=settings.EMAIL_HOST_USER,
-                password=settings.EMAIL_HOST_PASSWORD,
-                use_tls=settings.EMAIL_USE_TLS,
-                timeout=10
-            ) as connection:
+            logger.info("Creating SMTP connection...")
+            try:
+                connection = get_connection(
+                    host=settings.EMAIL_HOST,
+                    port=settings.EMAIL_PORT,
+                    username=settings.EMAIL_HOST_USER,
+                    password=settings.EMAIL_HOST_PASSWORD,
+                    use_tls=settings.EMAIL_USE_TLS,
+                    timeout=10
+                )
+                logger.info("SMTP connection created successfully")
+                
+                # Create and send email
                 msg = EmailMultiAlternatives(
                     subject=subject,
                     body=text_content,
@@ -101,10 +121,29 @@ def send_order_confirmation_email(order):
                 msg.attach_alternative(html_content, "text/html")
                 
                 # Send email with timeout
-                msg.send(fail_silently=False)
+                logger.info("Sending email...")
+                try:
+                    msg.send(fail_silently=False)
+                    logger.info("Email sent successfully")
+                    
+                    # Close the connection
+                    connection.close()
+                    
+                    logger.info(f"Successfully sent order confirmation email for order {order_identifier} to {order.email}")
+                    return True, "Email sent successfully"
+                    
+                except Exception as e:
+                    logger.error(f"Failed to send email: {str(e)}", exc_info=True)
+                    return False, f"Failed to send email: {str(e)}"
+                finally:
+                    try:
+                        connection.close()
+                    except Exception as e:
+                        logger.warning(f"Error closing connection: {str(e)}")
             
-            logger.info(f"Successfully sent order confirmation email for order {order_identifier} to {order.email}")
-            return True, "Email sent successfully"
+            except Exception as e:
+                logger.error(f"Failed to create SMTP connection: {str(e)}", exc_info=True)
+                return False, f"Failed to create SMTP connection: {str(e)}"
             
         except Exception as e:
             error_msg = f"Error preparing email for order {getattr(order, 'id', 'unknown')}: {str(e)}"

@@ -327,17 +327,47 @@ class PaymentSuccessView(LoginRequiredMixin, View):
             # Clear the cart after successful payment
             Cart.objects.filter(user=request.user, status='active').update(status='completed')
             
-            # Send order confirmation email
-            email_sent, email_message = send_order_confirmation_email(order)
-            if not email_sent:
-                logger.error(f"Failed to send order confirmation email for order #{order.id}: {email_message}")
-                # You might want to add a message to the user or admin about the email failure
-                messages.warning(request, "Your order was placed successfully, but we couldn't send a confirmation email. Please check your order history.")
-            else:
-                logger.info(f"Order confirmation email sent for order #{order.id}")
+            # Log order details before sending email
+            logger.info(f"Sending order confirmation for order #{order.id} to {order.email}")
+            logger.info(f"Order status: {order.status}, Payment status: {order.payment_status}")
             
-            messages.success(request, f"Your payment was successful! Order #{order.order_number} has been placed. A confirmation email has been sent to {order.email}.")
-            return redirect('store:order_detail', order_id=order.id)
+            try:
+                # Test SMTP connection first
+                from store.email_utils import test_email_connection
+                smtp_success, smtp_message = test_email_connection()
+                logger.info(f"SMTP Connection Test: {'Success' if smtp_success else 'Failed'} - {smtp_message}")
+                
+                # Send order confirmation email
+                email_sent, email_message = send_order_confirmation_email(order)
+                
+                if not email_sent:
+                    logger.error(f"Failed to send order confirmation email for order #{order.id}: {email_message}")
+                    # Log more details about the order
+                    logger.error(f"Order details - ID: {order.id}, Email: {order.email}, Total: {order.total_amount}")
+                    messages.warning(
+                        request, 
+                        "Your order was placed successfully, but we couldn't send a confirmation email. "
+                        "Please check your order history for details."
+                    )
+                else:
+                    logger.info(f"Order confirmation email sent for order #{order.id}")
+                    messages.success(
+                        request, 
+                        f"Your payment was successful! Order #{order.order_number} has been placed. "
+                        f"A confirmation email has been sent to {order.email}."
+                    )
+                
+                return redirect('store:order_detail', order_id=order.id)
+                
+            except Exception as e:
+                logger.error(f"Unexpected error in PaymentSuccessView: {str(e)}", exc_info=True)
+                # Still show success but log the error
+                messages.success(
+                    request,
+                    f"Your order #{order.order_number} has been placed. "
+                    "If you don't receive a confirmation email, please contact support."
+                )
+                return redirect('store:order_detail', order_id=order.id)
                 
         except Order.DoesNotExist:
             logger.error(f"Order not found or already processed: {order_id}")
