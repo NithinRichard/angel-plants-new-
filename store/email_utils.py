@@ -41,8 +41,14 @@ def send_order_confirmation_email(order):
         logger.error(error_msg)
         return False, error_msg
         
-    if not getattr(order, 'email', None):
-        error_msg = f"No email address for order {getattr(order, 'id', 'unknown')}"
+    # Get email from order or user if available
+    email = getattr(order, 'email', None)
+    if not email and hasattr(order, 'user') and order.user and hasattr(order.user, 'email'):
+        email = order.user.email
+        logger.info(f"Using user's email from account: {email}")
+    
+    if not email or not email.strip():
+        error_msg = f"No valid email address found for order {getattr(order, 'id', 'unknown')}. Email: {email}"
         logger.error(error_msg)
         return False, error_msg
 
