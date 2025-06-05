@@ -8,12 +8,13 @@ from django.views.generic import View, TemplateView, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.urls import reverse
 from django.contrib import messages
-from django.utils import timezone
 from django.db import transaction
 from django.http import Http404
+from django.contrib.sites.shortcuts import get_current_site
 
 from .models import Order, Payment, OrderItem, Cart, CartItem
 from .payment_utils import create_razorpay_order, verify_payment_signature
+from .email_utils import send_order_confirmation_email
 
 # Initialize Razorpay client
 import razorpay
@@ -76,6 +77,14 @@ class PaymentView(LoginRequiredMixin, View):
                 if cart:
                     cart.status = 'completed'
                     cart.save()
+                
+                # Send order confirmation email
+                current_site = get_current_site(request)
+                protocol = 'https' if request.is_secure() else 'http'
+                try:
+                    send_order_confirmation_email(order)
+                except Exception as e:
+                    logger.error(f"Failed to send order confirmation email: {str(e)}", exc_info=True)
                 
                 if is_ajax:
                     return JsonResponse({
@@ -248,6 +257,12 @@ def payment_webhook(request):
                             status=payment_data.get('status', 'captured'),
                             raw_data=json.dumps(payment_data)
                         )
+                        
+                        # Send order confirmation email
+                        try:
+                            send_order_confirmation_email(order)
+                        except Exception as e:
+                            logger.error(f"Failed to send order confirmation email for webhook order #{order.id}: {str(e)}", exc_info=True)
             except Order.DoesNotExist:
                 logger.error(f"Order not found: {order_id}")
                 return HttpResponseBadRequest("Order not found")
@@ -268,66 +283,57 @@ class PaymentSuccessView(LoginRequiredMixin, View):
     """Handle successful payment"""
     
     def get(self, request, *args, **kwargs):
-        order_id = request.GET.get('order_id')
         payment_id = request.GET.get('payment_id')
+        order_id = request.GET.get('order_id')
         signature = request.GET.get('signature')
         
-        if not all([order_id, payment_id, signature]):
-            messages.error(request, "Missing required payment parameters.")
+        if not all([payment_id, order_id, signature]):
+            messages.error(request, "Invalid payment response. Please contact support.")
             return redirect('store:checkout')
         
         try:
-            # Get the order with select_for_update to prevent race conditions
-            with transaction.atomic():
-                order = Order.objects.select_for_update().get(
-                    razorpay_order_id=order_id, 
-                    user=request.user,
-                    status__in=['pending', 'processing']
-                )
-                
-                # Verify the payment signature
-                if not verify_payment_signature(order_id, payment_id, signature):
-                    messages.error(request, "Invalid payment signature. Please contact support.")
-                    return redirect('store:payment_failed', order_id=order.id)
-                
-                # Only update if not already processed
-                if order.payment_status != 'completed':
-                    # Update order status
-                    order.status = 'processing'  # or 'completed' based on your workflow
-                    order.payment_status = True
-                    order.payment_id = payment_id
-                    order.payment_signature = signature
-                    order.payment_date = timezone.now()
-                    order.save()
-                    
-                    # Create payment record
-                    Payment.objects.create(
-                        order=order,
-                        payment_id=payment_id,
-                        amount=order.total_amount,
-                        payment_method='razorpay',
-                        status='captured',
-                        raw_data=json.dumps({
-                            'order_id': order_id,
-                            'payment_id': payment_id,
-                            'signature': signature,
-                            'timestamp': timezone.now().isoformat()
-                        })
-                    )
-                    
-                    # Clear the cart after successful payment
-                    Cart.objects.filter(user=request.user).delete()
-                    
-                    # Send order confirmation email (you can implement this)
-                    try:
-                        # send_order_confirmation_email(order)
-                        pass
-                    except Exception as e:
-                        logger.error(f"Failed to send order confirmation email: {str(e)}")
-                
-                # Redirect to order confirmation page
-                messages.success(request, "Your payment was successful!")
-                return redirect('store:checkout_success', order_number=order.order_number)
+            # Verify the payment
+            razorpay_client.utility.verify_payment_signature({
+                'razorpay_payment_id': payment_id,
+                'razorpay_order_id': order_id,
+                'razorpay_signature': signature
+            })
+            
+            # Get the order
+            order = get_object_or_404(Order, razorpay_order_id=order_id, user=request.user)
+            
+            # Update order status
+            order.status = 'processing'
+            order.payment_status = True
+            order.payment_id = payment_id
+            order.save(update_fields=['status', 'payment_status', 'payment_id', 'updated_at'])
+            
+            # Create payment record
+            Payment.objects.create(
+                order=order,
+                payment_id=payment_id,
+                amount=order.total_amount,
+                payment_method='razorpay',
+                status='captured',
+                raw_data=json.dumps({
+                    'order_id': order_id,
+                    'payment_id': payment_id,
+                    'signature': signature,
+                    'timestamp': timezone.now().isoformat()
+                })
+            )
+            
+            # Clear the cart after successful payment
+            Cart.objects.filter(user=request.user, status='active').update(status='completed')
+            
+            # Send order confirmation email
+            try:
+                send_order_confirmation_email(order)
+            except Exception as e:
+                logger.error(f"Failed to send order confirmation email: {str(e)}", exc_info=True)
+            
+            messages.success(request, f"Your payment was successful! Order #{order.order_number} has been placed. A confirmation email has been sent to {order.email}.")
+            return redirect('store:order_detail', order_id=order.id)
                 
         except Order.DoesNotExist:
             logger.error(f"Order not found or already processed: {order_id}")

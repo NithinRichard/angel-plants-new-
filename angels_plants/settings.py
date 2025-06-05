@@ -181,9 +181,15 @@ RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'rzp_test_1LkgCKbXRICfuu')
 RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '1mXjBWGvebzUPNi3HcmmXX8I')
 RAZORPAY_WEBHOOK_SECRET = os.getenv('RAZORPAY_WEBHOOK_SECRET', 'your_webhook_secret_here')
 
-# Email settings (configure these in production)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-DEFAULT_FROM_EMAIL = 'webmaster@example.com'
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'your-email@gmail.com')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'your-app-password')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@angel-plants.com')
+SERVER_EMAIL = DEFAULT_FROM_EMAIL
 
 # Ensure logs directory exists
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')
@@ -253,3 +259,5 @@ LOGGING = {
         },
     },
 }
+
+

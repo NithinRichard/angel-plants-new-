@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Order Confirmation - Angel's Plant Shop</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            border-bottom: 2px solid #198754;
+            margin-bottom: 20px;
+        }
+        .logo {
+            max-width: 150px;
+            margin-bottom: 15px;
+        }
+        .order-details {
+            background-color: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .order-items {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+        .order-items th, .order-items td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+        .order-items th {
+            background-color: #f2f2f2;
+        }
+        .order-totals {
+            margin-top: 20px;
+            text-align: right;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #198754;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .footer {
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #666;
+            text-align: center;
+            border-top: 1px solid #eee;
+            padding-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Thank You for Your Order!</h1>
+        <p>Your order has been received and is being processed.</p>
+    </div>
+
+    <div class="order-details">
+        <h2>Order #{{ order.order_number|default:order.id }}</h2>
+        <p><strong>Order Date:</strong> {{ order.created_at|date:"F j, Y H:i" }}</p>
+        <p><strong>Order Status:</strong> {{ order.get_status_display }}</p>
+        <p><strong>Payment Method:</strong> 
+            {% if order.payment_method == 'cash_on_delivery' %}
+                Cash on Delivery
+            {% else %}
+                {{ order.payment_method|default:"Razorpay"|title }}
+            {% endif %}
+        </p>
+        <p><strong>Payment Status:</strong> 
+            {% if order.payment_method == 'cash_on_delivery' %}
+                Pending (Cash on Delivery)
+            {% elif order.payment_status %}
+                Paid
+            {% else %}
+                Pending
+            {% endif %}
+        </p>
+    </div>
+
+    <h3>Order Items</h3>
+    <table class="order-items">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th>Qty</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in order_items %}
+            <tr>
+                <td>{{ item.product.name }}</td>
+                <td>₹{{ item.price|floatformat:2 }}</td>
+                <td>{{ item.quantity }}</td>
+                <td>₹{{ item.get_cost|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" style="text-align: right;"><strong>Subtotal:</strong></td>
+                <td>₹{{ subtotal|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td colspan="3" style="text-align: right;"><strong>Shipping:</strong></td>
+                <td>₹{{ shipping_cost|floatformat:2 }}</td>
+            </tr>
+            <tr>
+                <td colspan="3" style="text-align: right;"><strong>Total:</strong></td>
+                <td>₹{{ total|floatformat:2 }}</td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <div class="shipping-address">
+        <h3>Shipping Address</h3>
+        <p>
+            {{ shipping_address.name }}<br>
+            {% if shipping_address.address2 %}{{ shipping_address.address2 }}<br>{% endif %}
+            {{ shipping_address.address }}<br>
+            {{ shipping_address.city }}, {{ shipping_address.state }} {{ shipping_address.postal_code }}<br>
+            {{ shipping_address.country }}<br>
+            <strong>Phone:</strong> {{ shipping_address.phone }}
+        </p>
+    </div>
+
+    <div style="text-align: center; margin: 30px 0;">
+        <a href="{{ protocol }}://{{ domain }}{% url 'store:order_detail' order.id %}" class="btn">View Your Order</a>
+    </div>
+
+    <div class="footer">
+        <p>If you have any questions about your order, please contact our customer service at support@angel-plants.com</p>
+        <p>© {% now "Y" %} Angel's Plant Shop. All rights reserved.</p>
+    </div>
+</body>
+</html>
