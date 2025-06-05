@@ -1,0 +1,14 @@
+# Email Configuration
+# Copy this to .env file and fill in your actual credentials
+
+# Gmail SMTP Settings
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USE_TLS=True
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-specific-password
+DEFAULT_FROM_EMAIL=your-email@gmail.com
+SERVER_EMAIL=your-email@gmail.com
+
+# Test email address to receive test emails
+TEST_EMAIL=test-email@example.com
