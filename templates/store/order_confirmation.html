@@ -121,7 +121,9 @@
                             <p><strong>Order Date:</strong> {{ order.created_at|date:"F j, Y H:i" }}</p>
                             <p><strong>Order Status:</strong> <span class="badge bg-{{ order.get_status_display|lower }}">{{ order.get_status_display }}</span></p>
                             <p><strong>Payment Status:</strong> 
-                                {% if order.payment_status %}
+                                {% if order.payment_method == 'cash_on_delivery' %}
+                                    <span class="badge bg-info">Cash on Delivery</span>
+                                {% elif order.payment_status %}
                                     <span class="badge bg-success">Paid</span>
                                 {% else %}
                                     <span class="badge bg-warning">Pending</span>
