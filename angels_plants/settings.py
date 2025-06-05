@@ -183,13 +183,16 @@ RAZORPAY_WEBHOOK_SECRET = os.getenv('RAZORPAY_WEBHOOK_SECRET', 'your_webhook_sec
 
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.getenv('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', 'your-email@gmail.com')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', 'your-app-password')
-DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@angel-plants.com')
-SERVER_EMAIL = DEFAULT_FROM_EMAIL
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'nithinrichard1@gmail.com'  # Your Gmail address
+EMAIL_HOST_PASSWORD = 'xgfg adcs wlhs xvqd'  # Your App Password
+DEFAULT_FROM_EMAIL = 'nithinrichard1@gmail.com'
+SERVER_EMAIL = 'nithinrichard1@gmail.com'
+
+# Email timeout in seconds
+EMAIL_TIMEOUT = 10
 
 # Ensure logs directory exists
 LOGS_DIR = os.path.join(BASE_DIR, 'logs')

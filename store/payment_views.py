@@ -259,10 +259,11 @@ def payment_webhook(request):
                         )
                         
                         # Send order confirmation email
-                        try:
-                            send_order_confirmation_email(order)
-                        except Exception as e:
-                            logger.error(f"Failed to send order confirmation email for webhook order #{order.id}: {str(e)}", exc_info=True)
+                        email_sent, email_message = send_order_confirmation_email(order)
+                        if not email_sent:
+                            logger.error(f"Failed to send order confirmation email for webhook order #{order.id}: {email_message}")
+                        else:
+                            logger.info(f"Order confirmation email sent for webhook order #{order.id}")
             except Order.DoesNotExist:
                 logger.error(f"Order not found: {order_id}")
                 return HttpResponseBadRequest("Order not found")
@@ -327,10 +328,13 @@ class PaymentSuccessView(LoginRequiredMixin, View):
             Cart.objects.filter(user=request.user, status='active').update(status='completed')
             
             # Send order confirmation email
-            try:
-                send_order_confirmation_email(order)
-            except Exception as e:
-                logger.error(f"Failed to send order confirmation email: {str(e)}", exc_info=True)
+            email_sent, email_message = send_order_confirmation_email(order)
+            if not email_sent:
+                logger.error(f"Failed to send order confirmation email for order #{order.id}: {email_message}")
+                # You might want to add a message to the user or admin about the email failure
+                messages.warning(request, "Your order was placed successfully, but we couldn't send a confirmation email. Please check your order history.")
+            else:
+                logger.info(f"Order confirmation email sent for order #{order.id}")
             
             messages.success(request, f"Your payment was successful! Order #{order.order_number} has been placed. A confirmation email has been sent to {order.email}.")
             return redirect('store:order_detail', order_id=order.id)
