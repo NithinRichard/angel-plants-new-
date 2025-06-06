@@ -813,10 +813,9 @@ class AccountSettingsView(LoginRequiredMixin, TemplateView):
 
     def get(self, request, *args, **kwargs):
         user_form = UserForm(instance=request.user)
-        try:
-            profile_form = ProfileForm(instance=request.user.profile)
-        except Profile.DoesNotExist:
-            profile_form = ProfileForm()
+        # Get or create profile
+        profile, created = Profile.objects.get_or_create(user=request.user)
+        profile_form = ProfileForm(instance=profile)
         return self.render_to_response(
             self.get_context_data(
                 user_form=user_form,
@@ -825,7 +824,7 @@ class AccountSettingsView(LoginRequiredMixin, TemplateView):
         )
 
     def post(self, request, *args, **kwargs):
-        user = get_object_or_404(User, pk=request.user.pk)
+        user = request.user
         user_form = UserForm(request.POST, instance=user)
         
         # Get or create profile
@@ -839,11 +838,17 @@ class AccountSettingsView(LoginRequiredMixin, TemplateView):
         if user_form.is_valid() and profile_form.is_valid():
             try:
                 with transaction.atomic():
-                    user = user_form.save(commit=False)
-                    user.save()
+                    # Save user data
+                    user = user_form.save()
                     
+                    # Save profile data
                     profile = profile_form.save(commit=False)
                     profile.user = user
+                    
+                    # Handle file upload
+                    if 'profile_picture' in request.FILES:
+                        profile.profile_picture = request.FILES['profile_picture']
+                    
                     profile.save()
                     
                     messages.success(request, 'Your profile has been updated successfully.')
@@ -851,8 +856,10 @@ class AccountSettingsView(LoginRequiredMixin, TemplateView):
                     
             except Exception as e:
                 logger.error(f"Error updating profile: {str(e)}")
-                messages.error(request, 'An error occurred while updating your profile. Please try again.')
+                messages.error(request, f'An error occurred while updating your profile: {str(e)}')
         else:
+            # Log form errors for debugging
+            logger.error(f"Form errors - User form: {user_form.errors}, Profile form: {profile_form.errors}")
             messages.error(request, 'Please correct the errors below.')
             
         return self.render_to_response(
