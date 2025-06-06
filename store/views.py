@@ -4,6 +4,7 @@ import time
 import traceback
 import razorpay
 from django.db import transaction
+from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404, redirect, HttpResponseRedirect
 from django.urls import reverse_lazy
@@ -800,10 +801,9 @@ class AccountView(LoginRequiredMixin, TemplateView):
         return context
 
 
-from .forms import ProfileForm
-
+from django.shortcuts import get_object_or_404
 from .forms import ProfileForm, UserForm
-from .models import Profile
+from .models import Profile, User
 
 class AccountSettingsView(LoginRequiredMixin, TemplateView):
     """
@@ -825,26 +825,36 @@ class AccountSettingsView(LoginRequiredMixin, TemplateView):
         )
 
     def post(self, request, *args, **kwargs):
-        user_form = UserForm(request.POST, instance=request.user)
-        try:
-            profile_form = ProfileForm(
-                request.POST,
-                request.FILES,
-                instance=request.user.profile
-            )
-        except Profile.DoesNotExist:
-            profile_form = ProfileForm(
-                request.POST,
-                request.FILES
-            )
+        user = get_object_or_404(User, pk=request.user.pk)
+        user_form = UserForm(request.POST, instance=user)
+        
+        # Get or create profile
+        profile, created = Profile.objects.get_or_create(user=user)
+        profile_form = ProfileForm(
+            request.POST,
+            request.FILES,
+            instance=profile
+        )
 
         if user_form.is_valid() and profile_form.is_valid():
-            user_form.save()
-            profile_form.save()
-            messages.success(request, 'Your profile has been updated successfully.')
-            return redirect('store:account_settings')
-        
-        messages.error(request, 'Please correct the errors below.')
+            try:
+                with transaction.atomic():
+                    user = user_form.save(commit=False)
+                    user.save()
+                    
+                    profile = profile_form.save(commit=False)
+                    profile.user = user
+                    profile.save()
+                    
+                    messages.success(request, 'Your profile has been updated successfully.')
+                    return redirect('store:account_settings')
+                    
+            except Exception as e:
+                logger.error(f"Error updating profile: {str(e)}")
+                messages.error(request, 'An error occurred while updating your profile. Please try again.')
+        else:
+            messages.error(request, 'Please correct the errors below.')
+            
         return self.render_to_response(
             self.get_context_data(
                 user_form=user_form,
