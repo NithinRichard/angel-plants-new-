@@ -801,9 +801,14 @@ class AccountView(LoginRequiredMixin, TemplateView):
         return context
 
 
-from django.shortcuts import get_object_or_404
+from django.shortcuts import get_object_or_404, redirect
+from django.contrib.auth import logout
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
+from django.views.generic import View
 from .forms import ProfileForm, UserForm
-from .models import Profile, User
+from .models import Profile, User, Order, Address, Wishlist, CartItem, Cart, Review
 
 class AccountSettingsView(LoginRequiredMixin, TemplateView):
     """
@@ -873,6 +878,40 @@ class AccountSettingsView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context['active_tab'] = 'settings'
         return context
+
+
+class DeleteAccountView(LoginRequiredMixin, View):
+    """
+    View for users to delete their account.
+    """
+    login_url = 'accounts:login'
+    
+    def post(self, request, *args, **kwargs):
+        try:
+            # Get the user
+            user = request.user
+            
+            # Log out the user first to prevent any issues
+            logout(request)
+            
+            # Delete related data (optional, handle with care in production)
+            Order.objects.filter(user=user).delete()
+            Address.objects.filter(user=user).delete()
+            Wishlist.objects.filter(user=user).delete()
+            CartItem.objects.filter(cart__user=user).delete()
+            Cart.objects.filter(user=user).delete()
+            Review.objects.filter(user=user).delete()
+            
+            # Delete the user
+            user.delete()
+            
+            messages.success(request, 'Your account has been successfully deleted.')
+            return redirect('store:home')
+            
+        except Exception as e:
+            logger.error(f"Error deleting account: {str(e)}")
+            messages.error(request, 'An error occurred while deleting your account. Please try again.')
+            return redirect('store:account_settings')
 
 
 class RegisterView(CreateView):
