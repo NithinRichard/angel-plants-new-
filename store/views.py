@@ -6,6 +6,7 @@ import razorpay
 from django.db import transaction
 from django.core.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404, redirect, HttpResponseRedirect
+from django.urls import reverse_lazy
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.mixins import LoginRequiredMixin
@@ -1009,13 +1010,13 @@ class AboutView(TemplateView):
 class ContactView(FormView):
     template_name = 'store/contact.html'
     form_class = ContactForm
-    success_url = '/contact/thanks/'
+    success_url = reverse_lazy('store:contact_thanks')
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['page_title'] = 'Contact Us - Angel\'s Plant Shop'
-        context['contact_email'] = getattr(settings, 'CONTACT_EMAIL', 'contact@example.com')
-        context['contact_phone'] = getattr(settings, 'CONTACT_PHONE', '+1 (555) 123-4567')
+        context['contact_email'] = getattr(settings, 'CONTACT_EMAIL', 'nithinrichard1@gmail.com')
+        context['contact_phone'] = getattr(settings, 'CONTACT_PHONE', '+91 9555555555')
         context['business_address'] = getattr(settings, 'BUSINESS_ADDRESS', '123 Plant St, Greenery City, GC 12345')
         context['business_hours'] = getattr(settings, 'BUSINESS_HOURS', [
             'Monday - Friday: 9:00 AM - 6:00 PM',
@@ -1030,10 +1031,13 @@ class ContactView(FormView):
         subject = form.cleaned_data['subject']
         message = form.cleaned_data['message']
         
+        # Get contact email from settings or use a default
+        contact_email = getattr(settings, 'CONTACT_EMAIL', 'nithinrichard1@gmail.com')
+        
         try:
             print("\nDEBUG: Attempting to send email...")
             print(f"From: {settings.DEFAULT_FROM_EMAIL}")
-            print(f"To: {settings.CONTACT_EMAIL}")
+            print(f"To: {contact_email}")
             
             # Simple text email for testing
             email_subject = f"Contact Form: {subject}"
@@ -1064,7 +1068,7 @@ class ContactView(FormView):
                 subject=email_subject.strip(),
                 message=email_message.strip(),
                 from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[settings.CONTACT_EMAIL],
+                recipient_list=[contact_email],
                 fail_silently=False,
             )
             

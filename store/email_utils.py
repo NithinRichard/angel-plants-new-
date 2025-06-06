@@ -1,5 +1,6 @@
 import logging
 import smtplib
+from decimal import Decimal
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives, get_connection
 from django.template.loader import render_to_string
@@ -79,8 +80,8 @@ def send_order_confirmation_email(order):
                     'country': order.country,
                 },
                 'subtotal': order.get_total_cost(),
-                'shipping_cost': 99.00,  # Fixed shipping cost
-                'total': order.get_total_cost() + 99.00  # Including shipping
+                'shipping_cost': Decimal('99.00'),  # Fixed shipping cost as Decimal
+                'total': order.get_total_cost() + Decimal('99.00')  # Including shipping
             }
             
             # Render HTML content
