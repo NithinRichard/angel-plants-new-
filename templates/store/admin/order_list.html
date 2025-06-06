@@ -1,0 +1,312 @@
+{% extends 'admin/base_site.html' %}
+{% load i18n static humanize %}
+
+{% block extrastyle %}
+{{ block.super }}
+<style>
+    /* Base styles */
+    .filter-form {
+        background: #f8f9fa;
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 4px;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .order-status {
+        font-size: 0.8em;
+        padding: 3px 8px;
+        border-radius: 4px;
+    }
+    
+    .table th {
+        white-space: nowrap;
+    }
+    
+    .table td {
+        vertical-align: middle;
+    }
+    
+    .order-actions .btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.8rem;
+    }
+    
+    .badge {
+        font-weight: 500;
+    }
+    
+    .order-number {
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content_title %}
+<h1>{% trans 'Order Management' %}</h1>
+{% endblock %}
+
+{% block content %}
+<div class="order-management">
+    <!-- Filter Form -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">{% trans 'Filter Orders' %}</h5>
+        </div>
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label for="status" class="form-label">{% trans 'Status' %}</label>
+                    <select name="status" id="status" class="form-select form-select-sm">
+                        <option value="">{% trans 'All Statuses' %}</option>
+                        {% for status in status_choices %}
+                            <option value="{{ status.0 }}" {% if status.0 == current_status %}selected{% endif %}>
+                                {{ status.1 }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="date_from" class="form-label">{% trans 'From Date' %}</label>
+                    <input type="date" class="form-control form-control-sm" id="date_from" 
+                           name="date_from" value="{{ date_from|default:'' }}">
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="date_to" class="form-label">{% trans 'To Date' %}</label>
+                    <input type="date" class="form-control form-control-sm" id="date_to" 
+                           name="date_to" value="{{ date_to|default:'' }}">
+                </div>
+                
+                <div class="col-md-3">
+                    <label for="q" class="form-label">{% trans 'Search' %}</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control" id="q" name="q" 
+                               placeholder="{% trans 'Order #, customer, email...' %}" 
+                               value="{{ search_query|default:'' }}">
+                        <button class="btn btn-primary" type="submit">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="col-12 text-end">
+                    <a href="?" class="btn btn-outline-secondary btn-sm me-2">
+                        {% trans 'Reset' %}
+                    </a>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-filter me-1"></i> {% trans 'Apply Filters' %}
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Orders Table -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                {% if is_filtered %}
+                    {% trans 'Filtered Orders' %}
+                {% else %}
+                    {% trans 'Recent Orders' %}
+                {% endif %}
+                <span class="badge bg-secondary ms-2">{{ paginator.count }}</span>
+            </h5>
+            <div>
+                <a href="{% url 'admin_order_export' %}{% if request.GET %}?{{ request.GET.urlencode }}{% endif %}" 
+                   class="btn btn-outline-success btn-sm me-2">
+                    <i class="fas fa-file-export me-1"></i> {% trans 'Export' %}
+                </a>
+            </div>
+        </div>
+        
+        <div class="card-body p-0">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>{% trans 'Order' %}</th>
+                                <th>{% trans 'Customer' %}</th>
+                                <th>{% trans 'Date' %}</th>
+                                <th>{% trans 'Items' %}</th>
+                                <th class="text-end">{% trans 'Total' %}</th>
+                                <th>{% trans 'Status' %}</th>
+                                <th class="text-end">{% trans 'Actions' %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for order in page_obj %}
+                            <tr>
+                                <td>
+                                    <a href="{% url 'admin_order_detail' order.pk %}" class="order-number">
+                                        #{{ order.order_number }}
+                                    </a>
+                                </td>
+                                <td class="customer-name">
+                                    <div>{{ order.first_name }} {{ order.last_name }}</div>
+                                    <small class="text-muted">{{ order.email|truncatechars:25 }}</small>
+                                </td>
+                                <td>
+                                    <div>{{ order.created_at|date:"M d, Y" }}</div>
+                                    <small class="text-muted">{{ order.created_at|timesince }} {% trans 'ago' %}</small>
+                                </td>
+                                <td>{{ order.items.count }}</td>
+                                <td class="text-end order-total">
+                                    ₹{{ order.total_paid|floatformat:2|intcomma }}
+                                </td>
+                                <td>
+                                    <form class="d-inline" method="post" action="{% url 'admin_update_order_status' order.pk %}" id="status-form-{{ order.pk }}">
+                                        {% csrf_token %}
+                                        <select name="status" class="form-select form-select-sm d-inline-block" 
+                                                style="width: auto;" onchange="this.form.submit()">
+                                            {% for status in status_choices %}
+                                                <option value="{{ status.0 }}" 
+                                                    {% if status.0 == order.status %}selected{% endif %} 
+                                                    data-bg-class="bg-{{ status.0|order_status_bg }}">
+                                                    {{ status.1 }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </form>
+                                </td>
+                                <td class="text-end action-buttons">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'admin_order_detail' order.pk %}" 
+                                           class="btn btn-outline-primary" 
+                                           title="{% trans 'View Order' %}">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'admin_order_invoice' order.pk %}" 
+                                           class="btn btn-outline-secondary" 
+                                           title="{% trans 'Invoice' }}" target="_blank">
+                                            <i class="fas fa-file-invoice"></i>
+                                        </a>
+                                        <a href="{% url 'admin_order_send_email' order.pk %}" 
+                                           class="btn btn-outline-info" 
+                                           title="{% trans 'Send Update' %}">
+                                            <i class="fas fa-envelope"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                {% if page_obj.has_other_pages %}
+                <div class="card-footer d-flex justify-content-between align-items-center">
+                    <div class="text-muted small">
+                        {% blocktrans with start=page_obj.start_index end=page_obj.end_index count=page_obj.paginator.count %}
+                            Showing {{ start }} to {{ end }} of {{ count }} entries
+                        {% endblocktrans %}
+                    </div>
+                    
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination pagination-sm mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                        &laquo; {% trans 'First' %}
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                        {% trans 'Previous' %}
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for i in page_obj.paginator.page_range %}
+                                {% if page_obj.number == i %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ i }}</span>
+                                    </li>
+                                {% elif i > page_obj.number|add:'-3' and i < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ i }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                            {{ i }}
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                        {% trans 'Next' %}
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                        {% trans 'Last' %} &raquo;
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="no-orders">
+                    <i class="fas fa-inbox"></i>
+                    <h5>{% trans 'No orders found' %}</h5>
+                    <p class="text-muted">
+                        {% if is_filtered %}
+                            {% trans 'Try adjusting your filters or search criteria' %}
+                        {% else %}
+                            {% trans 'No orders have been placed yet' %}
+                        {% endif %}
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extrajs %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize select2 for status dropdowns if needed
+    if (typeof $ !== 'undefined' && $.fn.select2) {
+        $('select[name="status"]').select2({
+            minimumResultsForSearch: Infinity,
+            width: 'auto',
+            templateResult: formatStatus,
+            templateSelection: formatStatus
+        });
+    }
+    
+    // Format status with color
+    function formatStatus(status) {
+        if (!status.id) return status.text;
+        var $status = $(
+            '<span class="badge ' + $(status.element).data('bg-class') + '">' + status.text + '</span>'
+        );
+        return $status;
+    }
+    
+    // Set date picker max date to today for date_to
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('date_from').max = today;
+    document.getElementById('date_to').max = today;
+    
+    // Validate date range
+    document.querySelector('form[method="get"]').addEventListener('submit', function(e) {
+        const dateFrom = document.getElementById('date_from').value;
+        const dateTo = document.getElementById('date_to').value;
+        
+        if (dateFrom && dateTo && dateFrom > dateTo) {
+            e.preventDefault();
+            alert('{% trans "From date cannot be after To date" %}');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

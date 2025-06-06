@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+{% load i18n static humanize %}
+
+{% block title %}{% trans 'Track Your Order' %}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white py-3">
+                    <h2 class="h5 mb-0">{% trans 'Track Your Order' %}</h2>
+                </div>
+                <div class="card-body">
+                    {% if order %}
+                        <div class="alert alert-info">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <div>
+                                    <strong>{% trans 'Order #' %}{{ order.order_number }}</strong> - 
+                                    <span class="badge bg-{{ order.status|order_status_bg }}">
+                                        {{ order.get_status_display }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Order Status Timeline -->
+                        <div class="mb-4">
+                            <h5 class="mb-3">{% trans 'Order Status' %}</h5>
+                            <div class="order-timeline">
+                                {% for update in status_updates %}
+                                <div class="timeline-item {% if forloop.first %}active{% endif %}">
+                                    <div class="timeline-marker"></div>
+                                    <div class="timeline-content">
+                                        <h6 class="mb-1">{{ update.status_display }}</h6>
+                                        <p class="text-muted small mb-0">{{ update.created_at|date:"F j, Y g:i A" }}</p>
+                                        {% if update.note %}
+                                            <p class="mb-0 mt-2 small">{{ update.note }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <!-- Tracking Information -->
+                        {% if order.tracking_number %}
+                        <div class="card mb-4">
+                            <div class="card-body">
+                                <h5 class="card-title">{% trans 'Tracking Information' %}</h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p class="mb-1">
+                                            <strong>{% trans 'Tracking Number:' %}</strong> 
+                                            {% if order.tracking_url %}
+                                                <a href="{{ order.tracking_url }}" target="_blank" rel="noopener noreferrer">
+                                                    {{ order.tracking_number }}
+                                                </a>
+                                            {% else %}
+                                                {{ order.tracking_number }}
+                                            {% endif %}
+                                        </p>
+                                        {% if order.shipping_provider %}
+                                            <p class="mb-1"><strong>{% trans 'Shipping Provider:' %}</strong> {{ order.shipping_provider }}</p>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-6">
+                                        {% if order.estimated_delivery_date %}
+                                            <p class="mb-1"><strong>{% trans 'Estimated Delivery:' %}</strong> {{ order.estimated_delivery_date|date:"F j, Y" }}</p>
+                                        {% endif %}
+                                        {% if order.actual_delivery_date %}
+                                            <p class="mb-1"><strong>{% trans 'Delivered On:' %}</strong> {{ order.actual_delivery_date|date:"F j, Y" }}</p>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+
+                        <!-- Order Summary -->
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h5 class="mb-0">{% trans 'Order Summary' %}</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-hover mb-0">
+                                        <tbody>
+                                            <tr>
+                                                <th>{% trans 'Order Number' %}</th>
+                                                <td>{{ order.order_number }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>{% trans 'Order Date' %}</th>
+                                                <td>{{ order.created_at|date:"F j, Y" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>{% trans 'Status' %}</th>
+                                                <td>
+                                                    <span class="badge bg-{{ order.status|order_status_bg }}">
+                                                        {{ order.get_status_display }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <th>{% trans 'Total Amount' %}</th>
+                                                <td>₹{{ order.get_total_with_tax_and_shipping|intcomma }}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <div class="mb-4">
+                                <i class="fas fa-search fa-4x text-muted"></i>
+                            </div>
+                            <h4>{% trans 'Order Not Found' %}</h4>
+                            <p class="text-muted">
+                                {% trans "We couldn't find an order with that number. Please check your order number and try again." %}
+                            </p>
+                            <a href="{% url 'store:track_order' %}" class="btn btn-primary mt-3">
+                                <i class="fas fa-arrow-left me-2"></i>{% trans 'Back to Order Tracking' %}
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+                {% if order %}
+                <div class="card-footer bg-white text-center py-3">
+                    <p class="small text-muted mb-0">
+                        {% trans 'Need help with your order? ' %}
+                        <a href="{% url 'store:contact' %}">{% trans 'Contact Us' %}</a>
+                    </p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.order-timeline {
+    position: relative;
+    padding-left: 20px;
+    border-left: 2px solid #e9ecef;
+    margin-left: 10px;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+    padding-left: 25px;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -31px;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    border: 2px solid #fff;
+}
+
+.timeline-item.active .timeline-marker {
+    background-color: #0d6efd;
+}
+
+.timeline-content {
+    padding: 10px 15px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.timeline-item.active .timeline-content {
+    background-color: #e7f1ff;
+    border-left: 3px solid #0d6efd;
+}
+
+@media (max-width: 768px) {
+    .order-timeline {
+        padding-left: 15px;
+    }
+    
+    .timeline-item {
+        padding-left: 20px;
+    }
+    
+    .timeline-marker {
+        left: -26px;
+    }
+}
+</style>
+{% endblock %}

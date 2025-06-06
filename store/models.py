@@ -847,11 +847,22 @@ class CartItem(models.Model):
 class Order(models.Model):
     class Status(models.TextChoices):
         PENDING = 'pending', _('Pending')
+        CONFIRMED = 'confirmed', _('Confirmed')
         PROCESSING = 'processing', _('Processing')
-        SHIPPED = 'shipped', _('Shipped')
+        READY_FOR_SHIPMENT = 'ready_for_shipment', _('Ready for Shipment')
+        IN_TRANSIT = 'in_transit', _('In Transit')
+        OUT_FOR_DELIVERY = 'out_for_delivery', _('Out for Delivery')
         DELIVERED = 'delivered', _('Delivered')
         CANCELLED = 'cancelled', _('Cancelled')
+        RETURN_REQUESTED = 'return_requested', _('Return Requested')
+        RETURNED = 'returned', _('Returned')
         REFUNDED = 'refunded', _('Refunded')
+    
+    class ShippingMethod(models.TextChoices):
+        STANDARD = 'standard', _('Standard Shipping (5-7 business days)')
+        EXPRESS = 'express', _('Express Shipping (2-3 business days)')
+        SAME_DAY = 'same_day', _('Same Day Delivery (if ordered before 12 PM)')
+        STORE_PICKUP = 'store_pickup', _('Store Pickup')
 
     # Cart relationship
     cart = models.OneToOneField(
@@ -883,12 +894,29 @@ class Order(models.Model):
     
     # Order status and tracking
     status = models.CharField(_('status'), max_length=20, choices=Status.choices, default=Status.PENDING)
+    
+    # Shipping Information
+    shipping_method = models.CharField(
+        _('shipping method'), 
+        max_length=20, 
+        choices=ShippingMethod.choices, 
+        default=ShippingMethod.STANDARD
+    )
+    estimated_delivery_date = models.DateField(_('estimated delivery date'), null=True, blank=True)
+    actual_delivery_date = models.DateTimeField(_('actual delivery date'), null=True, blank=True)
+    
+    # Tracking Information
     tracking_number = models.CharField(_('tracking number'), max_length=100, blank=True, null=True)
     tracking_url = models.URLField(_('tracking URL'), max_length=500, blank=True, null=True)
+    shipping_provider = models.CharField(_('shipping provider'), max_length=100, blank=True, null=True)
+    
+    # Delivery Address (duplicated from address for historical records)
+    delivery_instructions = models.TextField(_('delivery instructions'), blank=True, null=True)
     
     # Timestamps
     created_at = models.DateTimeField(_('created at'), auto_now_add=True)
     updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+    status_changed = models.DateTimeField(_('status changed'), auto_now_add=True)
     
     # Financial information
     total_amount = models.DecimalField(_('total amount'), max_digits=10, decimal_places=2, default=0)
@@ -918,18 +946,50 @@ class Order(models.Model):
         return f'Order {self.order_number or self.id}'
         
     def save(self, *args, **kwargs):
-        # First save to get an ID
-        super().save(*args, **kwargs)
-        
-        # Update order number if needed
+        # Generate order number if not exists
         if not self.order_number:
-            self.order_number = f'ORD-{self.created_at.strftime("%Y%m%d")}-{self.id}'
-            super().save(update_fields=['order_number'])
-            return
+            self.order_number = f"ORD-{timezone.now().strftime('%Y%m%d')}-{Order.objects.count() + 1}"
+        
+        # Set estimated delivery date based on shipping method
+        if not self.estimated_delivery_date and self.status == self.Status.CONFIRMED:
+            from datetime import timedelta
+            if self.shipping_method == self.ShippingMethod.STANDARD:
+                self.estimated_delivery_date = timezone.now() + timedelta(days=7)
+            elif self.shipping_method == self.ShippingMethod.EXPRESS:
+                self.estimated_delivery_date = timezone.now() + timedelta(days=3)
+            elif self.shipping_method == self.ShippingMethod.SAME_DAY:
+                self.estimated_delivery_date = timezone.now().date()
+        
+        # Update status_changed if status is being updated
+        if self.pk:
+            old_status = Order.objects.get(pk=self.pk).status
+            if old_status != self.status:
+                self.status_changed = timezone.now()
+        
+        super().save(*args, **kwargs)
+    
+    def get_status_display_with_dates(self):
+        """Return status with relevant dates for display."""
+        status_display = self.get_status_display()
+        if self.status == self.Status.DELIVERED and self.actual_delivery_date:
+            return f"{status_display} on {self.actual_delivery_date.strftime('%b %d, %Y')}"
+        elif self.estimated_delivery_date:
+            return f"{status_display} (Estimated: {self.estimated_delivery_date.strftime('%b %d, %Y')})"
+        return status_display
+    
+    def get_tracking_info(self):
+        """Return tracking information in a structured format."""
+        if not self.tracking_number:
+            return None
             
-        # Update item prices to match current product prices
-        for item in self.items.all():
-            item.update_price()
+        return {
+            'tracking_number': self.tracking_number,
+            'tracking_url': self.tracking_url,
+            'shipping_provider': self.shipping_provider or 'Standard Shipping',
+            'status': self.get_status_display(),
+            'estimated_delivery': self.estimated_delivery_date.strftime('%b %d, %Y') if self.estimated_delivery_date else None,
+            'delivery_instructions': self.delivery_instructions
+        }
     
     def get_total_cost(self, update_db=True):
         """Calculate total cost of all items in the order"""
@@ -953,6 +1013,41 @@ class Order(models.Model):
         # Apply any discount
         total -= self.discount_amount or 0
         return max(total, Decimal('0.00'))  # Ensure total is not negative
+
+
+class OrderStatusUpdate(models.Model):
+    """Model to track order status changes and delivery updates."""
+    order = models.ForeignKey(
+        'Order',
+        on_delete=models.CASCADE,
+        related_name='status_updates',
+        verbose_name=_('order')
+    )
+    status = models.CharField(_('status'), max_length=50)
+    status_display = models.CharField(_('status display'), max_length=100)
+    note = models.TextField(_('note'), blank=True, null=True)
+    created_at = models.DateTimeField(_('created at'), auto_now_add=True)
+    updated_at = models.DateTimeField(_('updated at'), auto_now=True)
+    
+    class Meta:
+        verbose_name = _('order status update')
+        verbose_name_plural = _('order status updates')
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.order.order_number} - {self.status_display} at {self.created_at}"
+    
+    @classmethod
+    def create_status_update(cls, order, status, status_display=None, note=None):
+        """Helper method to create a status update."""
+        if status_display is None:
+            status_display = dict(order.Status.choices).get(status, status)
+        return cls.objects.create(
+            order=order,
+            status=status,
+            status_display=status_display,
+            note=note
+        )
 
 
 class OrderItem(models.Model):

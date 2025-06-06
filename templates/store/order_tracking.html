@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+{% load i18n static humanize %}
+
+{% block title %}{% trans 'Order Tracking' %} - {{ order.order_number }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'store:home' %}">{% trans 'Home' %}</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'accounts:order_history' %}">{% trans 'My Orders' %}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{% trans 'Order Tracking' %}</li>
+                </ol>
+            </nav>
+            
+            <h2 class="mb-4">{% trans 'Order Tracking' %}</h2>
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">{% trans 'Order' %} #{{ order.order_number }}</h5>
+                        <span class="badge bg-{{ order.status|order_status_bg }}">{{ order.get_status_display }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>{% trans 'Order Details' %}</h6>
+                            <p class="mb-1"><strong>{% trans 'Order Date:' %}</strong> {{ order.created_at|date:"F j, Y" }}</p>
+                            {% if order.estimated_delivery_date %}
+                                <p class="mb-1"><strong>{% trans 'Estimated Delivery:' %}</strong> {{ order.estimated_delivery_date|date:"F j, Y" }}</p>
+                            {% endif %}
+                            {% if order.actual_delivery_date %}
+                                <p class="mb-1"><strong>{% trans 'Delivered On:' %}</strong> {{ order.actual_delivery_date|date:"F j, Y" }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <h6>{% trans 'Shipping Address' %}</h6>
+                            <address class="mb-0">
+                                {{ order.first_name }} {{ order.last_name }}<br>
+                                {{ order.address }}<br>
+                                {% if order.address2 %}{{ order.address2 }}<br>{% endif %}
+                                {{ order.city }}, {{ order.state }} {{ order.postal_code }}<br>
+                                {{ order.country }}
+                            </address>
+                        </div>
+                    </div>
+                    
+                    {% if order.tracking_number %}
+                    <hr>
+                    <div class="row">
+                        <div class="col-12">
+                            <h6>{% trans 'Tracking Information' %}</h6>
+                            <p class="mb-1">
+                                <strong>{% trans 'Tracking Number:' %}</strong> 
+                                {% if order.tracking_url %}
+                                    <a href="{{ order.tracking_url }}" target="_blank" rel="noopener noreferrer">
+                                        {{ order.tracking_number }}
+                                    </a>
+                                {% else %}
+                                    {{ order.tracking_number }}
+                                {% endif %}
+                            </p>
+                            {% if order.shipping_provider %}
+                                <p class="mb-1"><strong>{% trans 'Shipping Provider:' %}</strong> {{ order.shipping_provider }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Order Status Timeline -->
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">{% trans 'Order Status' %}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="order-timeline">
+                        {% for update in status_updates %}
+                        <div class="timeline-item {% if forloop.first %}active{% endif %}">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <h6 class="mb-1">{{ update.status_display }}</h6>
+                                <p class="text-muted small mb-0">{{ update.created_at|date:"F j, Y g:i A" }}</p>
+                                {% if update.note %}
+                                    <p class="mb-0 mt-2">{{ update.note }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Order Items -->
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">{% trans 'Order Items' %}</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>{% trans 'Product' %}</th>
+                                    <th class="text-center">{% trans 'Quantity' %}</th>
+                                    <th class="text-end">{% trans 'Price' %}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in order.items.all %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <img src="{{ item.product.image.url }}" alt="{{ item.product.name }}" class="img-fluid me-3" style="width: 50px;">
+                                            <div>
+                                                <h6 class="mb-0">{{ item.product.name }}</h6>
+                                                <small class="text-muted">{{ item.product.short_description|default:"" }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">{{ item.quantity }}</td>
+                                    <td class="text-end">₹{{ item.price|intcomma }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <td colspan="2" class="text-end"><strong>{% trans 'Subtotal:' %}</strong></td>
+                                    <td class="text-end">₹{{ order.get_total_cost|intcomma }}</td>
+                                </tr>
+                                {% if order.discount_amount %}
+                                <tr>
+                                    <td colspan="2" class="text-end"><strong>{% trans 'Discount:' %}</strong></td>
+                                    <td class="text-end text-danger">-₹{{ order.discount_amount|intcomma }}</td>
+                                </tr>
+                                {% endif %}
+                                <tr>
+                                    <td colspan="2" class="text-end"><strong>{% trans 'Shipping:' %}</strong></td>
+                                    <td class="text-end">
+                                        {% if order.shipping_fee %}
+                                            ₹{{ order.shipping_fee|intcomma }}
+                                        {% else %}
+                                            {% trans 'Free' %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr class="table-active">
+                                    <td colspan="2" class="text-end"><strong>{% trans 'Total:' %}</strong></td>
+                                    <td class="text-end"><strong>₹{{ order.get_total_with_tax_and_shipping|intcomma }}</strong></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.order-timeline {
+    position: relative;
+    padding-left: 20px;
+    border-left: 2px solid #e9ecef;
+    margin-left: 10px;
+}
+
+.timeline-item {
+    position: relative;
+    padding-bottom: 20px;
+    padding-left: 25px;
+}
+
+.timeline-item:last-child {
+    padding-bottom: 0;
+}
+
+.timeline-marker {
+    position: absolute;
+    left: -31px;
+    top: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: #e9ecef;
+    border: 2px solid #fff;
+}
+
+.timeline-item.active .timeline-marker {
+    background-color: #0d6efd;
+}
+
+.timeline-content {
+    padding: 10px 15px;
+    background-color: #f8f9fa;
+    border-radius: 4px;
+}
+
+.timeline-item.active .timeline-content {
+    background-color: #e7f1ff;
+    border-left: 3px solid #0d6efd;
+}
+
+@media (max-width: 768px) {
+    .order-timeline {
+        padding-left: 15px;
+    }
+    
+    .timeline-item {
+        padding-left: 20px;
+    }
+    
+    .timeline-marker {
+        left: -26px;
+    }
+}
+</style>
+{% endblock %}

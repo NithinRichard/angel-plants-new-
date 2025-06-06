@@ -177,10 +177,14 @@ AUTHENTICATION_BACKENDS = [
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
-# Razorpay Configuration
-RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID', 'rzp_test_1LkgCKbXRICfuu')
-RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET', '1mXjBWGvebzUPNi3HcmmXX8I')
-RAZORPAY_WEBHOOK_SECRET = os.getenv('RAZORPAY_WEBHOOK_SECRET', 'your_webhook_secret_here')
+# Razorpay Configuration - Live Mode
+RAZORPAY_KEY_ID = os.getenv('RAZORPAY_KEY_ID')
+RAZORPAY_KEY_SECRET = os.getenv('RAZORPAY_KEY_SECRET')
+RAZORPAY_WEBHOOK_SECRET = os.getenv('RAZORPAY_WEBHOOK_SECRET', '')
+
+# Verify that required Razorpay credentials are set
+if not all([RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET]):
+    raise ValueError("Missing Razorpay configuration. Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables.")
 
 # Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

@@ -1,0 +1,132 @@
+{% extends 'store/base.html' %}
+{% load i18n %}
+
+{% block title %}{% trans 'Track Your Order' %} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm">
+                <div class="card-header bg-light">
+                    <h1 class="h4 mb-0">{% trans 'Track Your Order' %}</h1>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">
+                        {% trans 'Enter your order number and email address to track your order status.' %}
+                    </p>
+                    
+                    <form method="post" class="mt-4" novalidate>
+                        {% csrf_token %}
+                        
+                        {% if form.non_field_errors %}
+                            <div class="alert alert-danger">
+                                {% for error in form.non_field_errors %}
+                                    {{ error }}
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                        
+                        <div class="mb-3">
+                            <label for="{{ form.order_number.id_for_label }}" class="form-label">
+                                {{ form.order_number.label }}
+                                <span class="text-danger">*</span>
+                            </label>
+                            {{ form.order_number }}
+                            {% if form.order_number.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.order_number.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                {% trans 'You can find your order number in your order confirmation email.' %}
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label for="{{ form.email.id_for_label }}" class="form-label">
+                                {{ form.email.label }}
+                                <span class="text-danger">*</span>
+                            </label>
+                            {{ form.email }}
+                            {% if form.email.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {{ form.email.errors.0 }}
+                                </div>
+                            {% endif %}
+                            <div class="form-text">
+                                {% trans 'The email address you used when placing the order.' %}
+                            </div>
+                        </div>
+                        
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="fas fa-search me-2"></i>{% trans 'Track Order' %}
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <hr class="my-4">
+                    
+                    <div class="text-center">
+                        <p class="mb-2">{% trans "Don't have an account?" %}</p>
+                        <a href="{% url 'accounts:login' %}?next={% url 'store:order_tracking' %}" class="btn btn-outline-secondary">
+                            {% trans 'Sign in to view all your orders' %}
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-4 text-center">
+                <p class="text-muted">
+                    {% trans 'Need help with your order?' %}
+                    <a href="{% url 'store:contact' %}" class="text-decoration-none">
+                        {% trans 'Contact our customer service' %}
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add validation classes to form inputs
+        const form = document.querySelector('form');
+        if (form) {
+            const inputs = form.querySelectorAll('input');
+            inputs.forEach(input => {
+                input.classList.add('form-control');
+                
+                // Add validation classes on blur
+                input.addEventListener('blur', function() {
+                    if (this.value.trim() !== '') {
+                        this.classList.add('is-valid');
+                    } else {
+                        this.classList.remove('is-valid');
+                    }
+                });
+            });
+            
+            // Form submission handler
+            form.addEventListener('submit', function(e) {
+                let isValid = true;
+                inputs.forEach(input => {
+                    if (input.required && input.value.trim() === '') {
+                        input.classList.add('is-invalid');
+                        isValid = false;
+                    } else {
+                        input.classList.remove('is-invalid');
+                    }
+                });
+                
+                if (!isValid) {
+                    e.preventDefault();
+                }
+            });
+        }
+    });
+</script>
+{% endblock %}

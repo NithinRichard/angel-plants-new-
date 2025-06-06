@@ -1,11 +1,36 @@
 """
 Signals for the store app
 """
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save, pre_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.conf import settings
+from django.utils import timezone
+from .models import Order, OrderStatusUpdate
+
+
+def track_order_status_change(sender, instance, **kwargs):
+    """
+    Track order status changes and create status updates
+    """
+    if not instance.pk:  # New order
+        return
+        
+    try:
+        old_instance = sender.objects.get(pk=instance.pk)
+        if old_instance.status != instance.status:  # Status changed
+            OrderStatusUpdate.create_status_update(
+                order=instance,
+                status=instance.status,
+                note=f"Order status changed from {old_instance.get_status_display()} to {instance.get_status_display()}"
+            )
+            
+            # Update delivery dates based on status
+            if instance.status == Order.Status.DELIVERED and not instance.actual_delivery_date:
+                instance.actual_delivery_date = timezone.now()
+    except sender.DoesNotExist:
+        pass  # New instance
 
 
 def create_or_update_user_profile(sender, instance, created, **kwargs):
@@ -37,13 +62,17 @@ def create_cart_for_new_user(user):
     )
 
 
-# Connect the signal when Django is ready
+# Connect the signals when Django is ready
 def ready():
-    from django.db.models.signals import post_save
+    from django.db.models.signals import post_save, pre_save
     from django.apps import apps
     
+    # Connect user signals
     User = apps.get_model('auth', 'User')
     post_save.connect(create_or_update_user_profile, sender=User)
+    
+    # Connect order signals
+    post_save.connect(track_order_status_change, sender=Order)
     
     # Also handle the custom user model if it exists
     try:

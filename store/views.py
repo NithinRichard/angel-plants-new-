@@ -48,12 +48,17 @@ from .filters import ProductFilter
 from .forms import (
     ContactForm, ProductForm, ProductImageForm, ProductTagForm, 
     CheckoutForm, ReviewForm, AddressForm,
-    ProductVariationForm, VariationForm, VariationOptionForm, OrderForm
+    ProductVariationForm, VariationForm, VariationOptionForm, OrderForm,
+    UpdateOrderStatusForm
 )
 from .models import (
     Category, Product, ProductImage, ProductVariation, Variation, VariationOption, 
     Review, Order, OrderItem, Cart, CartItem, Address, Wishlist, Payment,
     OrderActivity, BlogPost
+)
+
+from .delivery_views import (
+    OrderTrackingView, PublicOrderTrackingView, update_order_status, TrackOrderView
 )
 
 # Get the User model
@@ -586,6 +591,31 @@ class SetDefaultAddressView(LoginRequiredMixin, View):
         
         messages.success(request, f'Default {address.get_address_type_display().lower()} updated.')
         return redirect('store:address_book')
+
+
+class TrackOrderView(FormView):
+    """View for users to track their orders by order number and email"""
+    template_name = 'store/track_order.html'
+    form_class = TrackOrderForm
+    success_url = reverse_lazy('store:order_tracking')
+
+    def form_valid(self, form):
+        order_number = form.cleaned_data['order_number']
+        email = form.cleaned_data['email']
+        
+        try:
+            order = Order.objects.get(
+                order_number=order_number,
+                email__iexact=email
+            )
+            # If order is found, redirect to the order tracking page
+            return redirect('store:order_tracking', order_number=order.order_number)
+        except Order.DoesNotExist:
+            messages.error(self.request, _(
+                'No order found with the provided order number and email. '
+                'Please check your details and try again.'
+            ))
+            return self.form_invalid(form)
 
 
 class OrderDetailView(LoginRequiredMixin, DetailView):
