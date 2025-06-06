@@ -132,10 +132,10 @@ class Profile(models.Model):
     def get_short_name(self):
         """Return the user's short name."""
         return self.user.get_short_name()
-
+        
     def get_profile_picture_url(self):
-        """Return the URL of the profile picture."""
-        if hasattr(self, 'profile_picture') and self.profile_picture:
+        """Return the URL of the profile picture or the default if not set."""
+        if self.profile_picture and hasattr(self.profile_picture, 'url'):
             return self.profile_picture.url
         return '/static/profile_pictures/default-avatar.png'
 

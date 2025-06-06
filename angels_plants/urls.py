@@ -4,6 +4,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect
 from django.conf import settings
 from django.conf.urls.static import static
+from django.conf.urls import handler404, handler500
 from django.views.generic import TemplateView
 from django.views.decorators.csrf import requires_csrf_token
 from django.template import loader
@@ -60,6 +61,7 @@ handler500 = 'angels_plants.urls.custom_page_not_found'
 # Serve media files in development
 if settings.DEBUG:
     from django.conf.urls.static import static
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     
     # Debug toolbar
