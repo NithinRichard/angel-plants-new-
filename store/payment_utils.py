@@ -12,13 +12,20 @@ import base64
 logger = logging.getLogger(__name__)
 
 # Initialize Razorpay client
-try:
-    logger.info(f"Initializing Razorpay client with key: {settings.RAZORPAY_KEY_ID}")
-    client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
-    logger.info("Razorpay client initialized successfully")
-except Exception as e:
-    logger.error(f"Failed to initialize Razorpay client: {str(e)}")
-    raise
+client = None
+if settings.RAZORPAY_KEY_ID and settings.RAZORPAY_KEY_SECRET:
+    try:
+        logger.info("Initializing Razorpay client")
+        client = razorpay.Client(auth=(settings.RAZORPAY_KEY_ID, settings.RAZORPAY_KEY_SECRET))
+        logger.info("Razorpay client initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize Razorpay client: {str(e)}")
+        client = None
+else:
+    logger.warning(
+        'Razorpay is not configured. Payment functionality will be disabled. '
+        'Please set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET environment variables to enable payments.'
+    )
 
 def create_razorpay_order(amount, currency='INR', receipt=None, notes=None):
     """
@@ -31,8 +38,12 @@ def create_razorpay_order(amount, currency='INR', receipt=None, notes=None):
         notes (dict, optional): Additional notes to be added to the order.
         
     Returns:
-        dict: Razorpay order details or None if failed
+        dict: Razorpay order details or None if failed or Razorpay is not configured
     """
+    if client is None:
+        logger.warning("Razorpay is not configured. Cannot create order.")
+        return None
+        
     try:
         # Validate input
         if not amount or (isinstance(amount, (str, int, float)) and float(amount) <= 0):
@@ -98,39 +109,38 @@ def verify_payment_signature(razorpay_order_id, razorpay_payment_id, razorpay_si
         razorpay_signature (str): The signature to verify
         
     Returns:
-        bool: True if signature is valid, False otherwise
+        bool: True if signature is valid, False otherwise or if Razorpay is not configured
     """
-    if not all([razorpay_order_id, razorpay_payment_id, razorpay_signature]):
-        logger.error("Missing required parameters for signature verification")
+    if client is None or not settings.RAZORPAY_KEY_SECRET:
+        logger.warning("Razorpay is not configured. Cannot verify payment signature.")
         return False
         
     try:
-        # Create the signature payload
+        logger.info(f"Verifying payment signature for order: {razorpay_order_id}")
+        
+        # Create the payload in the format expected by Razorpay
         payload = f"{razorpay_order_id}|{razorpay_payment_id}"
         
-        # Generate the expected signature
-        key = settings.RAZORPAY_KEY_SECRET.encode('utf-8')
+        # Verify the signature
         generated_signature = hmac.new(
-            key,
-            payload.encode('utf-8'),
-            sha256
+            key=settings.RAZORPAY_KEY_SECRET.encode('utf-8'),
+            msg=payload.encode('utf-8'),
+            digestmod=sha256
         ).hexdigest()
         
-        # Compare the signatures in a secure way
+        # Compare the generated signature with the one provided
         is_valid = hmac.compare_digest(generated_signature, razorpay_signature)
         
-        if not is_valid:
-            logger.warning(f"Invalid signature for order {razorpay_order_id}")
+        if is_valid:
+            logger.info(f"Payment signature verified for order: {razorpay_order_id}")
+        else:
+            logger.warning(f"Invalid payment signature for order: {razorpay_order_id}")
             
         return is_valid
         
-    except razorpay.errors.SignatureVerificationError as e:
-        logger.error(f"Signature verification failed: {str(e)}")
-        return False
     except Exception as e:
-        logger.exception("Error in verify_payment_signature")
+        logger.error(f"Error verifying payment signature: {str(e)}", exc_info=True)
         return False
-
 
 def verify_webhook_signature(payload, signature, webhook_secret=None):
     """
@@ -142,8 +152,12 @@ def verify_webhook_signature(payload, signature, webhook_secret=None):
         webhook_secret (str, optional): The webhook secret. If not provided, uses settings.RAZORPAY_WEBHOOK_SECRET
         
     Returns:
-        bool: True if signature is valid, False otherwise
+        bool: True if signature is valid, False otherwise or if Razorpay is not configured
     """
+    if client is None:
+        logger.warning("Razorpay is not configured. Cannot verify webhook signature.")
+        return False
+        
     try:
         if not webhook_secret:
             webhook_secret = getattr(settings, 'RAZORPAY_WEBHOOK_SECRET', '')
@@ -159,7 +173,12 @@ def verify_webhook_signature(payload, signature, webhook_secret=None):
         expected_signature = hmac.new(key, msg, sha256).hexdigest()
         
         # Compare the signatures in constant time to prevent timing attacks
-        return hmac.compare_digest(expected_signature, signature)
+        is_valid = hmac.compare_digest(expected_signature, signature)
+        
+        if not is_valid:
+            logger.warning("Webhook signature verification failed")
+            
+        return is_valid
         
     except Exception as e:
         logger.exception("Error in verify_webhook_signature")
@@ -174,8 +193,12 @@ def get_payment_status(payment_id):
         payment_id (str): The Razorpay payment ID
         
     Returns:
-        dict: Payment details or None if failed
+        dict: Payment details or None if failed or Razorpay is not configured
     """
+    if client is None:
+        logger.warning("Razorpay is not configured. Cannot fetch payment status.")
+        return None
+        
     try:
         if not payment_id:
             logger.error("No payment ID provided")
