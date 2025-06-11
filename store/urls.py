@@ -7,6 +7,7 @@ from django.urls import reverse_lazy
 from django.http import JsonResponse
 from . import views
 from .api_urls import api_urlpatterns as api_urls
+from .delivery_views import OrderTrackingView, public_order_tracking, update_order_status
 
 # Import cart views from the cart_views module
 from .cart_views import add_to_cart, update_cart, remove_from_cart
@@ -50,9 +51,9 @@ urlpatterns = [
     
     # Order Tracking
     path('orders/track/', views.TrackOrderView.as_view(), name='track_order'),
-    path('orders/tracking/<str:order_number>/', views.OrderTrackingView.as_view(), name='order_tracking'),
-    path('orders/tracking/public/<str:order_number>/', views.public_order_tracking, name='public_order_tracking'),
-    path('orders/update-status/<int:order_id>/', views.update_order_status, name='update_order_status'),
+    path('orders/tracking/<str:order_number>/', OrderTrackingView.as_view(), name='order_tracking'),
+    path('orders/tracking/public/<str:order_number>/', public_order_tracking, name='public_order_tracking'),
+    path('orders/update-status/<int:order_id>/', update_order_status, name='update_order_status'),
     
     # Cart and Checkout
     # Cart URLs
