@@ -3,9 +3,10 @@ from django.forms import ModelForm, inlineformset_factory
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
-from django.utils import timezone
-from django.contrib.auth import get_user_model
+from django import forms
+from django.utils.translation import gettext_lazy as _
 from django.core.validators import validate_email
+from django.forms import TextInput, EmailInput
 
 from .models import (
     Product, Category, ProductImage, ProductTag, Order, OrderItem, 
