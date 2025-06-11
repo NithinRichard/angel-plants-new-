@@ -51,7 +51,7 @@ urlpatterns = [
     # Order Tracking
     path('orders/track/', views.TrackOrderView.as_view(), name='track_order'),
     path('orders/tracking/<str:order_number>/', views.OrderTrackingView.as_view(), name='order_tracking'),
-    path('orders/tracking/public/<str:order_number>/', views.PublicOrderTrackingView.as_view(), name='public_order_tracking'),
+    path('orders/tracking/public/<str:order_number>/', views.public_order_tracking, name='public_order_tracking'),
     path('orders/update-status/<int:order_id>/', views.update_order_status, name='update_order_status'),
     
     # Cart and Checkout
