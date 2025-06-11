@@ -58,7 +58,7 @@ from .models import (
 )
 
 from .delivery_views import (
-    OrderTrackingView, public_order_tracking, update_order_status, TrackOrderView
+    OrderTrackingView, public_order_tracking, update_order_status
 )
 
 # Get the User model
