@@ -151,6 +151,28 @@ class AddressForm(forms.ModelForm):
         return address
 
 
+class UpdateOrderStatusForm(forms.ModelForm):
+    """Form for updating order status with additional notes."""
+    class Meta:
+        model = Order
+        fields = ['status', 'notes']
+        widgets = {
+            'status': forms.Select(attrs={'class': 'form-select'}),
+            'notes': forms.Textarea(attrs={
+                'class': 'form-control',
+                'rows': 3,
+                'placeholder': 'Add any notes about this status update...'
+            }),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Customize status choices if needed
+        self.fields['status'].choices = Order.STATUS_CHOICES
+        # Make notes field not required
+        self.fields['notes'].required = False
+
+
 class ContactForm(forms.Form):
     name = forms.CharField(
         max_length=100,
